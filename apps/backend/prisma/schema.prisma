@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String         @id @default(cuid())
+  email             String         @unique
+  clerkId           String         @unique
+  subscriptionStatus String        @default("FREE")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  // Relations
+  subscriptions     Subscription[]
+  promoCodeRedemptions PromoCodeRedemption[]
+  checklists        Checklist[]
+
+  @@map("users")
+}
+
+model Subscription {
+  id                  String           @id @default(cuid())
+  userId              String
+  stripeSubscriptionId String          @unique
+  status              String
+  productName         String           // Dynamic product name (e.g., "Premium", "Basic", etc.)
+  priceId             String           // Stripe price ID for tracking monthly/yearly
+  interval            String           // "month" or "year"
+  startDate           DateTime
+  endDate             DateTime?
+  nextBillingDate     DateTime?
+  cancelledAt         DateTime?
+  cancelAtPeriodEnd   Boolean          @default(false)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  // Relations
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model PromoCode {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  subscriptionType String  // The subscription type this code grants (e.g., "Premium Lifetime", "PremiumC")
+  durationDays  Int?     // NULL for lifetime, number of days for temporary subscriptions
+  expiresAt     DateTime
+  usageLimit    Int
+  usedCount     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  redemptions   PromoCodeRedemption[]
+
+  @@map("promo_codes")
+}
+
+model PromoCodeRedemption {
+  id          String    @id @default(cuid())
+  promoCodeId String
+  userId      String
+  redeemedAt  DateTime  @default(now())
+  expiresAt   DateTime? // When this redemption expires (NULL for lifetime)
+
+  // Relations
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([promoCodeId, userId])
+  @@map("promo_code_redemptions")
+}
+
+model Checklist {
+  id        String   @id @default(cuid())
+  slug      String              // URL-friendly identifier derived from name
+  name      String              // Display name
+  mode      String   @default("api") // "api" | "local" - matches mobile StorageMode
+  userId    String              // Owner of the checklist
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     ChecklistItem[]
+
+  @@unique([userId, slug]) // User can only have one checklist per slug
+  @@map("checklists")
+}
+
+model ChecklistItem {
+  id          String   @id @default(cuid())
+  title       String
+  completed   Boolean  @default(false)
+  checklistId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@map("checklist_items")
+}
+
+// Removed SubscriptionStatus enum - now using flexible strings

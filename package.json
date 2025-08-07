@@ -1,0 +1,25 @@
+{
+  "name": "fullstack-app",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "docker:up": "docker compose up -d"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^1.10.0",
+    "typescript": "~5.8.3"
+  },
+  "packageManager": "npm@10.0.0"
+}
