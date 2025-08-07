@@ -96,6 +96,11 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionButtons}>
             <Button
+              title="My Projects"
+              onPress={() => navigation.navigate('Projects' as any)}
+              variant="outline"
+            />
+            <Button
               title="Upgrade Plan"
               onPress={() => {/* Navigate to subscription */ }}
               variant="primary"

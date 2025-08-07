@@ -8,6 +8,8 @@ import { CustomDrawerContent } from '../components/CustomDrawerContent';
 
 // Screens
 import { HomeScreen } from '../screens/HomeScreen';
+import { ProjectsScreen } from '../screens/ProjectsScreen';
+import { ProjectScreen } from '../screens/ProjectScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SubscriptionScreen } from '../screens/SubscriptionScreen';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -35,6 +37,14 @@ const AuthenticatedNavigator = () => {
             <AuthenticatedDrawer.Screen
                 name="Home"
                 component={HomeScreen}
+            />
+            <AuthenticatedDrawer.Screen
+                name="Projects"
+                component={ProjectsScreen}
+            />
+            <AuthenticatedDrawer.Screen
+                name="Project"
+                component={ProjectScreen}
             />
             <AuthenticatedDrawer.Screen
                 name="Settings"

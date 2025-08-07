@@ -1,4 +1,5 @@
 export * from './checklists';
+export * from './projects';
 
 // User types
 export interface User {
@@ -94,6 +95,8 @@ export type RootStackParamList = {
 
 export type AuthenticatedStackParamList = {
     Home: undefined;
+    Projects: undefined;
+    Project: { shortId: string };
     Settings: undefined;
     Subscription: undefined;
 };
