@@ -218,6 +218,14 @@ class ApiService {
     });
   }
 
+  async patch<T>(endpoint: string, data: any, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    return this.makeRequest<T>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+      ...options,
+    });
+  }
+
   async delete<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'DELETE',

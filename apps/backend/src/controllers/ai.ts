@@ -8,12 +8,17 @@ const prisma = new PrismaClient();
 export class AIController {
   static async chat(req: AuthenticatedRequest, res: Response) {
     try {
+      console.log('[AI Controller] Chat request received');
+      console.log('[AI Controller] User ID:', req.user?.id);
+      console.log('[AI Controller] Project shortId:', req.params.shortId);
+      console.log('[AI Controller] Message:', req.body.message);
+      
       if (!req.user) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
       const { shortId } = req.params;
-      const { message } = req.body;
+      const { message, threadId } = req.body;
 
       if (!message) {
         return res.status(400).json({ error: 'Message is required' });
@@ -31,14 +36,6 @@ export class AIController {
         return res.status(404).json({ error: 'Project not found' });
       }
 
-      // Check if AI is enabled for this project
-      const config = project.config as any;
-      if (!config.aiEnabled) {
-        return res.status(403).json({ 
-          error: 'AI features are disabled for this project. Upgrade to Premium to enable AI assistance.' 
-        });
-      }
-
       // Check user subscription
       const user = await prisma.user.findUnique({
         where: { id: req.user.id },
@@ -50,8 +47,12 @@ export class AIController {
         });
       }
 
+      console.log('[AI Controller] Processing AI chat for project:', project.id, 'threadId:', threadId);
+      
       // Process AI chat
-      const result = await OpenAIService.chatWithProject(project.id, message);
+      const result = await OpenAIService.chatWithProject(project.id, message, threadId);
+
+      console.log('[AI Controller] AI chat result:', JSON.stringify(result, null, 2));
 
       res.json({
         success: true,
@@ -128,6 +129,182 @@ export class AIController {
     } catch (error) {
       console.error('Clear chat history error:', error);
       res.status(500).json({ error: 'Failed to clear chat history' });
+    }
+  }
+
+  static async getChatThreads(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const { shortId } = req.params;
+
+      const project = await prisma.project.findFirst({
+        where: {
+          shortId,
+          userId: req.user.id,
+        },
+      });
+
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const threads = await prisma.aiChatThread.findMany({
+        where: { projectId: project.id },
+        orderBy: { lastMessageAt: 'desc' },
+        include: {
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: 1, // Get last message for preview
+          },
+        },
+      });
+
+      res.json({
+        success: true,
+        data: threads,
+      });
+    } catch (error) {
+      console.error('Get chat threads error:', error);
+      res.status(500).json({ error: 'Failed to fetch chat threads' });
+    }
+  }
+
+  static async getActiveThread(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const { shortId } = req.params;
+
+      const project = await prisma.project.findFirst({
+        where: {
+          shortId,
+          userId: req.user.id,
+        },
+      });
+
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      // Find the most recent active thread (within last 24 hours)
+      const activeThread = await prisma.aiChatThread.findFirst({
+        where: {
+          projectId: project.id,
+          lastMessageAt: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
+          }
+        },
+        orderBy: {
+          lastMessageAt: 'desc'
+        },
+        include: {
+          messages: {
+            orderBy: { createdAt: 'asc' }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        data: activeThread,
+      });
+    } catch (error) {
+      console.error('Get active thread error:', error);
+      res.status(500).json({ error: 'Failed to fetch active thread' });
+    }
+  }
+
+  static async getChatThread(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const { shortId, threadId } = req.params;
+
+      const project = await prisma.project.findFirst({
+        where: {
+          shortId,
+          userId: req.user.id,
+        },
+      });
+
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const thread = await prisma.aiChatThread.findFirst({
+        where: { 
+          id: threadId,
+          projectId: project.id 
+        },
+        include: {
+          messages: {
+            orderBy: { createdAt: 'asc' }
+          }
+        }
+      });
+
+      if (!thread) {
+        return res.status(404).json({ error: 'Chat thread not found' });
+      }
+
+      res.json({
+        success: true,
+        data: thread,
+      });
+    } catch (error) {
+      console.error('Get chat thread error:', error);
+      res.status(500).json({ error: 'Failed to fetch chat thread' });
+    }
+  }
+
+  static async deleteChatThread(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const { shortId, threadId } = req.params;
+
+      const project = await prisma.project.findFirst({
+        where: {
+          shortId,
+          userId: req.user.id,
+        },
+      });
+
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const thread = await prisma.aiChatThread.findFirst({
+        where: { 
+          id: threadId,
+          projectId: project.id 
+        },
+      });
+
+      if (!thread) {
+        return res.status(404).json({ error: 'Chat thread not found' });
+      }
+
+      await prisma.aiChatThread.delete({
+        where: { id: threadId }
+      });
+
+      res.json({
+        success: true,
+        message: 'Chat thread deleted successfully',
+      });
+    } catch (error) {
+      console.error('Delete chat thread error:', error);
+      res.status(500).json({ error: 'Failed to delete chat thread' });
     }
   }
 }

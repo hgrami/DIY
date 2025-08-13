@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useAuthContext } from '../context/AuthContext';
 import { RootStackParamList, AuthenticatedStackParamList, UnauthenticatedStackParamList } from '../@types';
-import { CustomDrawerContent } from '../components/CustomDrawerContent';
+import { DrawerContent } from './DrawerContent';
 
 // Screens
 import { HomeScreen } from '../screens/HomeScreen';
@@ -23,7 +23,7 @@ const UnauthenticatedStack = createStackNavigator<UnauthenticatedStackParamList>
 const AuthenticatedNavigator = () => {
     return (
         <AuthenticatedDrawer.Navigator
-            drawerContent={(props) => <CustomDrawerContent {...props} />}
+            drawerContent={(props) => <DrawerContent {...props} />}
             screenOptions={{
                 headerShown: false,
                 drawerType: 'slide',

@@ -17,7 +17,6 @@ import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import type { AuthenticatedStackParamList } from '../@types';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { Checklist } from '../components/Checklist/Checklist';
 
 type HomeScreenNavigationProp = DrawerNavigationProp<AuthenticatedStackParamList, 'Home'>;
 
@@ -82,15 +81,6 @@ export const HomeScreen: React.FC = () => {
           </Text>
         </Card>
 
-        <Checklist
-          checklistName="My Daily Tasks"
-          type="api"
-          showHeader
-          density="compact"
-          useFloatingButton
-          enableStats
-          enableSwipeActions
-        />
         {/* Quick Actions */}
         <Card>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -114,6 +104,92 @@ export const HomeScreen: React.FC = () => {
               size="medium"
               style={styles.actionButton}
             />
+          </View>
+        </Card>
+
+        {/* Coming Soon Banner */}
+        <Card>
+          <View style={styles.comingSoonContainer}>
+            <Feather name="clock" size={20} color="#FFA726" />
+            <Text style={styles.comingSoonTitle}>Coming Soon</Text>
+          </View>
+          <Text style={styles.comingSoonText}>
+            Advanced analytics, team collaboration, and AI-powered project insights are on the way!
+          </Text>
+        </Card>
+
+        {/* Favorite Projects */}
+        <Card>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Favorite Projects</Text>
+            <TouchableOpacity style={styles.viewAllButton}>
+              <Text style={styles.viewAllText}>View All</Text>
+              <Feather name="chevron-right" size={16} color="rgba(255, 255, 255, 0.7)" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.projectsContainer}>
+            <View style={styles.projectCard}>
+              <View style={styles.projectIcon}>
+                <Feather name="star" size={16} color="#FFA726" />
+              </View>
+              <View style={styles.projectInfo}>
+                <Text style={styles.projectTitle}>Kitchen Renovation</Text>
+                <Text style={styles.projectProgress}>75% Complete</Text>
+              </View>
+            </View>
+            <View style={styles.projectCard}>
+              <View style={styles.projectIcon}>
+                <Feather name="star" size={16} color="#FFA726" />
+              </View>
+              <View style={styles.projectInfo}>
+                <Text style={styles.projectTitle}>Garden Landscaping</Text>
+                <Text style={styles.projectProgress}>30% Complete</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.addProjectCard}>
+              <Feather name="plus" size={20} color="rgba(255, 255, 255, 0.6)" />
+              <Text style={styles.addProjectText}>Add to Favorites</Text>
+            </TouchableOpacity>
+          </View>
+        </Card>
+
+        {/* Recent Projects */}
+        <Card>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Projects</Text>
+            <TouchableOpacity style={styles.viewAllButton}>
+              <Text style={styles.viewAllText}>View All</Text>
+              <Feather name="chevron-right" size={16} color="rgba(255, 255, 255, 0.7)" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.projectsContainer}>
+            <View style={styles.projectCard}>
+              <View style={styles.projectIcon}>
+                <Feather name="tool" size={16} color="#4FC3F7" />
+              </View>
+              <View style={styles.projectInfo}>
+                <Text style={styles.projectTitle}>Bathroom Upgrade</Text>
+                <Text style={styles.projectProgress}>Last edited: 2 hours ago</Text>
+              </View>
+            </View>
+            <View style={styles.projectCard}>
+              <View style={styles.projectIcon}>
+                <Feather name="home" size={16} color="#81C784" />
+              </View>
+              <View style={styles.projectInfo}>
+                <Text style={styles.projectTitle}>Living Room Paint</Text>
+                <Text style={styles.projectProgress}>Last edited: Yesterday</Text>
+              </View>
+            </View>
+            <View style={styles.projectCard}>
+              <View style={styles.projectIcon}>
+                <Feather name="settings" size={16} color="#FFB74D" />
+              </View>
+              <View style={styles.projectInfo}>
+                <Text style={styles.projectTitle}>Deck Repair</Text>
+                <Text style={styles.projectProgress}>Last edited: 3 days ago</Text>
+              </View>
+            </View>
           </View>
         </Card>
 
@@ -222,5 +298,87 @@ const styles = StyleSheet.create({
   logoutButton: {
     marginTop: 20,
     marginBottom: 40,
+  },
+  comingSoonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  comingSoonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFA726',
+    marginLeft: 8,
+  },
+  comingSoonText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginRight: 4,
+  },
+  projectsContainer: {
+    gap: 12,
+  },
+  projectCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  projectIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  projectInfo: {
+    flex: 1,
+  },
+  projectTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  projectProgress: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  addProjectCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderStyle: 'dashed',
+  },
+  addProjectText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginLeft: 8,
+    fontWeight: '500',
   },
 });

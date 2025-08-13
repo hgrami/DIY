@@ -1,8 +1,18 @@
-import React, { forwardRef, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Keyboard, Platform, ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import React, { forwardRef, useRef, useEffect, useState, useMemo } from 'react';
+import { View, Text, StyleSheet, Keyboard, Platform, ScrollView, StyleProp, ViewStyle, TouchableOpacity } from 'react-native';
+import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop, BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import { Feather } from '@expo/vector-icons';
+
+interface ActionButtonProps {
+  iconName: keyof typeof Feather.glyphMap;
+  onAction: () => void;
+  style?: StyleProp<ViewStyle>;
+  disabled?: boolean;
+  loading?: boolean;
+  iconColor?: string;
+  iconSize?: number;
+}
 
 interface BottomSheetWrapperProps {
   children: React.ReactNode;
@@ -10,54 +20,36 @@ interface BottomSheetWrapperProps {
   onClose: () => void;
   snapPoints?: string[];
   enableKeyboardAvoidance?: boolean;
-  keyboardBehavior?: 'height' | 'position' | 'padding';
   title?: string;
+  description?: string;
+  footerComponent?: React.ReactNode;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+  actionButton?: ActionButtonProps;
 }
 
 export const BottomSheetWrapper = forwardRef<BottomSheetModal, BottomSheetWrapperProps>(
-  ({ 
-    children, 
-    isVisible, 
-    onClose, 
-    snapPoints = ['80%'],
+  ({
+    children,
+    isVisible,
+    onClose,
+    snapPoints = ['25%', '50%', '90%'],
     enableKeyboardAvoidance = true,
-    keyboardBehavior = 'height',
-    title
+    title,
+    description,
+    footerComponent,
+    contentContainerStyle,
+    actionButton
   }, ref) => {
     const internalRef = useRef<BottomSheetModal>(null);
     const bottomSheetRef = ref || internalRef;
 
-    // Keyboard listeners to properly manage keyboard and bottom sheet interaction
-    useEffect(() => {
-      const keyboardWillShowListener = Keyboard.addListener(
-        Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-        () => {
-          // With single snap point, ensure bottom sheet stays in position
-          if (typeof bottomSheetRef !== 'function' && bottomSheetRef?.current) {
-            bottomSheetRef.current.snapToIndex(0);
-          }
-        }
-      );
-      const keyboardWillHideListener = Keyboard.addListener(
-        Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-        () => {
-          // Keep the same position with single snap point
-          if (typeof bottomSheetRef !== 'function' && bottomSheetRef?.current) {
-            bottomSheetRef.current.snapToIndex(0);
-          }
-        }
-      );
-
-      return () => {
-        keyboardWillShowListener.remove();
-        keyboardWillHideListener.remove();
-      };
-    }, [bottomSheetRef]);
+    // Memoize snap points to prevent unnecessary re-renders
+    const memoizedSnapPoints = useMemo(() => snapPoints, [snapPoints]);
 
     // Handle visibility changes
     useEffect(() => {
       if (typeof bottomSheetRef === 'function') return;
-      
+
       if (isVisible) {
         bottomSheetRef?.current?.present();
       } else {
@@ -90,81 +82,184 @@ export const BottomSheetWrapper = forwardRef<BottomSheetModal, BottomSheetWrappe
     return (
       <BottomSheetModal
         ref={bottomSheetRef}
-        snapPoints={snapPoints}
+        snapPoints={memoizedSnapPoints}
         enableDynamicSizing={false}
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.bottomSheetIndicator}
-        keyboardBehavior={enableKeyboardAvoidance ? "extend" : "fillParent"}
+        keyboardBehavior="extend"
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
         enablePanDownToClose={true}
         enableDismissOnClose={true}
+        enableBlurKeyboardOnGesture={true}
         backdropComponent={renderBackdrop}
         onDismiss={handleDismiss}
+        index={0}
+        enableOverDrag={false}
+        enableHandlePanningGesture={true}
+        enableContentPanningGesture={true}
       >
         <BottomSheetView style={styles.bottomSheetContent}>
-          <ScrollView
+          {(title || true) && (
+            <View style={styles.bottomSheetHeader}>
+              {title && (
+                <Text style={styles.bottomSheetTitle}>{title}</Text>
+              )}
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={handleDismiss}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Feather
+                  name="x"
+                  size={24}
+                  color="rgba(255, 255, 255, 0.7)"
+                />
+              </TouchableOpacity>
+            </View>
+          )}
+          {description && (
+            <Text style={styles.bottomSheetDescription}>{description}</Text>
+          )}
+          <BottomSheetScrollView
             style={styles.bottomSheetInnerContent}
-            contentContainerStyle={styles.bottomSheetScrollContent}
+            contentContainerStyle={[
+              styles.bottomSheetScrollContent,
+              contentContainerStyle
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            bounces={false}
           >
-            {title && (
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>{title}</Text>
-              </View>
-            )}
-            
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.05)']}
-              style={styles.gradient}
-            >
-              {children}
-            </LinearGradient>
-          </ScrollView>
+            {children}
+          </BottomSheetScrollView>
+          {actionButton && (
+            <View style={styles.bottomSheetActionButton}>
+              <TouchableOpacity
+                style={[
+                  styles.fabButton,
+                  actionButton.style,
+                  actionButton.disabled && styles.fabButtonDisabled
+                ]}
+                onPress={actionButton.onAction}
+                disabled={actionButton.disabled || actionButton.loading}
+              >
+                {actionButton.loading ? (
+                  <View style={styles.fabLoadingContainer}>
+                    <Text style={styles.fabLoadingText}>...</Text>
+                  </View>
+                ) : (
+                  <Feather
+                    name={actionButton.iconName}
+                    size={actionButton.iconSize || 24}
+                    color={actionButton.iconColor || '#FFFFFF'}
+                  />
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+          {footerComponent && (
+            <View style={styles.bottomSheetButtons}>
+              {footerComponent}
+            </View>
+          )}
         </BottomSheetView>
       </BottomSheetModal>
     );
   }
 );
 
+/* ───────────────────────── styles ───────────────────────── */
 const styles = StyleSheet.create({
   bottomSheetBackground: {
-    backgroundColor: 'rgba(30, 30, 30, 0.95)',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#2C2C2E',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   bottomSheetIndicator: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: '#666',
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
   },
   bottomSheetContent: {
     flex: 1,
-    minHeight: 200,
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 16,
+  },
+  bottomSheetTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  closeButton: {
+    padding: 8,
+  },
+  bottomSheetDescription: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+    paddingHorizontal: 24,
   },
   bottomSheetInnerContent: {
     flex: 1,
   },
   bottomSheetScrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
-    flexGrow: 1,
-    justifyContent: 'flex-start',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 120, // Extra padding for action button
   },
-  header: {
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 16,
+  bottomSheetActionButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    zIndex: 10,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+  fabButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  fabButtonDisabled: {
+    backgroundColor: '#888',
+    opacity: 0.7,
+  },
+  fabLoadingContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fabLoadingText: {
+    fontSize: 20,
     color: '#FFFFFF',
-    textAlign: 'center',
   },
-  gradient: {
-    flex: 1,
-    minHeight: 100,
+  bottomSheetButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    paddingTop: 16,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

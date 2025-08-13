@@ -12,4 +12,10 @@ router.post('/projects/:shortId/ai-chat', AIController.chat);
 router.get('/projects/:shortId/ai-history', AIController.getChatHistory);
 router.delete('/projects/:shortId/ai-history', AIController.clearChatHistory);
 
+// AI chat thread routes
+router.get('/projects/:shortId/ai-threads', AIController.getChatThreads);
+router.get('/projects/:shortId/ai-threads/active', AIController.getActiveThread);
+router.get('/projects/:shortId/ai-threads/:threadId', AIController.getChatThread);
+router.delete('/projects/:shortId/ai-threads/:threadId', AIController.deleteChatThread);
+
 export default router;

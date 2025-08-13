@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,55 +11,51 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
+import { BottomSheetWrapper } from '../components/BottomSheetWrapper';
+import { CreateProjectForm, CreateProjectButtons, CreateProjectFormRef } from '../components/CreateProjectForm';
+import { ProjectsService } from '../services/projectsService';
 import { useAuthContext } from '../context/AuthContext';
-import { Project } from '../@types';
-import { apiClient } from '../services/apiClient';
+import { useProjectContext } from '../context/ProjectContext';
+import { Project, AuthenticatedStackParamList } from '../@types';
+import { ScreenWithHeader } from '../components/ScreenWithHeader';
+
+type ProjectsScreenNavigationProp = DrawerNavigationProp<AuthenticatedStackParamList, 'Projects'>;
 
 export const ProjectsScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<ProjectsScreenNavigationProp>();
   const { user } = useAuthContext();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const { projects, loading, searchQuery, searchProjects, addProject } = useProjectContext();
   const [showCreateModal, setShowCreateModal] = useState(false);
-
-  useEffect(() => {
-    loadProjects();
-  }, []);
-
-  const loadProjects = async () => {
-    try {
-      setLoading(true);
-      const response = await apiClient.get('/api/projects');
-      if (response.data.success) {
-        setProjects(response.data.data);
-      }
-    } catch (error) {
-      console.error('Failed to load projects:', error);
-      Alert.alert('Error', 'Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [formData, setFormData] = useState({ title: '', goal: '', description: '', deadline: '' });
+  const createProjectFormRef = useRef<CreateProjectFormRef>(null);
 
   const handleProjectPress = async (project: Project) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Navigate to project screen
-    // navigation.navigate('Project', { shortId: project.shortId });
+    navigation.navigate('Project', { shortId: project.shortId });
   };
 
   const handleCreateProject = () => {
     setShowCreateModal(true);
+    // Auto-focus the input after bottom sheet animation
+    setTimeout(() => {
+      createProjectFormRef.current?.focus();
+    }, 600);
   };
 
-  const filteredProjects = projects.filter(project =>
-    project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (project.goal && project.goal.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const handleProjectCreated = (shortId: string, project: any) => {
+    setShowCreateModal(false);
+    addProject(project);
+    navigation.navigate('Project', { shortId });
+  };
+
+  // Projects are already filtered by the API call
 
   const renderProjectCard = ({ item }: { item: Project }) => {
     const completedTasks = item.checklistItems.filter(task => task.completed).length;
@@ -110,11 +106,11 @@ export const ProjectsScreen: React.FC = () => {
           {totalTasks > 0 && (
             <View style={styles.progressContainer}>
               <View style={styles.progressBar}>
-                <View 
+                <View
                   style={[
-                    styles.progressFill, 
+                    styles.progressFill,
                     { width: `${progress}%` }
-                  ]} 
+                  ]}
                 />
               </View>
               <Text style={styles.progressText}>{Math.round(progress)}%</Text>
@@ -151,13 +147,19 @@ export const ProjectsScreen: React.FC = () => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search projects..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+          value={localSearchQuery}
+          onChangeText={(text) => {
+            setLocalSearchQuery(text);
+            searchProjects(text);
+          }}
           placeholderTextColor="#999"
         />
-        {searchQuery.length > 0 && (
+        {localSearchQuery.length > 0 && (
           <TouchableOpacity
-            onPress={() => setSearchQuery('')}
+            onPress={() => {
+              setLocalSearchQuery('');
+              searchProjects('');
+            }}
             style={styles.clearButton}
           >
             <Feather name="x" size={20} color="#666" />
@@ -168,39 +170,111 @@ export const ProjectsScreen: React.FC = () => {
   );
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <ScreenWithHeader title="My Projects">
+      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
+        <StatusBar barStyle="light-content" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Projects</Text>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={handleCreateProject}
-        >
-          <Feather name="plus" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Search Bar */}
-      {projects.length > 0 && renderSearchBar()}
-
-      {/* Projects List */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading projects...</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>My Projects</Text>
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={handleCreateProject}
+          >
+            <Feather name="plus" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
-      ) : (
-        <FlatList
-          data={filteredProjects}
-          renderItem={renderProjectCard}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={renderEmptyState}
-        />
-      )}
-    </LinearGradient>
+
+        {/* Search Bar */}
+        {projects.length > 0 && renderSearchBar()}
+
+        {/* Projects List */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading projects...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={projects}
+            renderItem={renderProjectCard}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={renderEmptyState}
+          />
+        )}
+
+        {/* Create Project Bottom Sheet */}
+        <BottomSheetWrapper
+          isVisible={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          snapPoints={['80%']}
+          title="Create New Project"
+          footerComponent={
+            <CreateProjectButtons
+              loading={createLoading}
+              canCreate={formData.title.trim().length > 0}
+              onCancel={() => {
+                setShowCreateModal(false);
+                setFormData({ title: '', goal: '', description: '', deadline: '' });
+              }}
+              onCreate={async () => {
+                if (!formData.title.trim()) {
+                  Alert.alert('Validation Error', 'Project title is required');
+                  return;
+                }
+
+                try {
+                  setCreateLoading(true);
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+                  const isFreeUser = !user?.subscriptionStatus || user?.subscriptionStatus === 'FREE';
+                  const config = {
+                    aiEnabled: !isFreeUser,
+                    showInspiration: true,
+                    showMaterials: true,
+                    showChecklist: true,
+                    showNotes: true,
+                    showPhotos: true,
+                  };
+
+                  const projectData = {
+                    title: formData.title.trim(),
+                    goal: formData.goal.trim() || undefined,
+                    description: formData.description.trim() || undefined,
+                    deadline: formData.deadline ? new Date(formData.deadline) : undefined,
+                    config,
+                  };
+
+                  const response = await ProjectsService.createProject(projectData);
+
+                  if (response.success) {
+                    handleProjectCreated(response.data.shortId, response.data);
+                    setFormData({ title: '', goal: '', description: '', deadline: '' });
+                  } else {
+                    Alert.alert('Error', 'Failed to create project');
+                  }
+                } catch (error) {
+                  console.error('Failed to create project:', error);
+                  Alert.alert('Error', 'Failed to create project. Please try again.');
+                } finally {
+                  setCreateLoading(false);
+                }
+              }}
+            />
+          }
+        >
+          <CreateProjectForm
+            ref={createProjectFormRef}
+            user={user}
+            onSuccess={handleProjectCreated}
+            onCancel={() => setShowCreateModal(false)}
+            formData={formData}
+            setFormData={setFormData}
+          />
+        </BottomSheetWrapper>
+      </LinearGradient>
+    </ScreenWithHeader>
   );
 };
 

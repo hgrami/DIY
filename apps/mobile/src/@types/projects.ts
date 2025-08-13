@@ -8,11 +8,12 @@ export interface Project {
   description?: string;
   deadline?: Date;
   config: ProjectConfig;
+  interviewContext?: any; // JSON data for AI interview responses
   createdAt: Date;
   updatedAt: Date;
   inspirationLinks: InspirationLink[];
   materials: MaterialItem[];
-  checklistItems: ChecklistItem[];
+  checklistItems: ProjectChecklistItem[];
   notes: Note[];
   photos: ProjectPhoto[];
   aiChatHistory: AiChatMessage[];
@@ -70,6 +71,18 @@ export interface ProjectPhoto {
   url: string;
   caption?: string;
   uploadedAt: Date;
+}
+
+export interface ProjectChecklistItem {
+  id: string;
+  title: string;
+  completed: boolean;
+  projectId?: string;
+  dueDate?: Date;
+  createdBy?: 'user' | 'ai';
+  order?: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AiChatMessage {

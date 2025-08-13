@@ -128,6 +128,7 @@ model Project {
   description String?
   deadline    DateTime?
   config      Json     @default("{}") // Feature toggles and settings
+  interviewContext Json? // Stores AI interview questions and answers for better context
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -139,6 +140,7 @@ model Project {
   notes       Note[]
   photos      ProjectPhoto[]
   aiChatHistory AiChatMessage[]
+  aiChatThreads AiChatThread[]
 
   @@map("projects")
 }
@@ -208,9 +210,24 @@ model ProjectPhoto {
   @@map("project_photos")
 }
 
+model AiChatThread {
+  id        String   @id @default(cuid())
+  projectId String
+  title     String?  // Auto-generated from first message or user-defined
+  startedAt DateTime @default(now())
+  lastMessageAt DateTime @default(now())
+
+  // Relations
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages  AiChatMessage[]
+
+  @@map("ai_chat_threads")
+}
+
 model AiChatMessage {
   id        String   @id @default(cuid())
   projectId String
+  threadId  String?  // Optional for backward compatibility
   role      String   // "user" | "assistant"
   content   String
   functionCall Json? // For storing function call results
@@ -218,6 +235,7 @@ model AiChatMessage {
 
   // Relations
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  thread    AiChatThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@map("ai_chat_messages")
 }
