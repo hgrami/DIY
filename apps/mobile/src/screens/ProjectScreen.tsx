@@ -54,11 +54,11 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
   useEffect(() => {
     if (project && !hasCheckedInterview) {
       const isPremiumUser = user?.subscriptionStatus && user.subscriptionStatus !== 'FREE';
-      
+
       if (isPremiumUser) {
-        const hasInterviewContext = project.interviewContext && 
-                                   (project.interviewContext as any)?.completedAt;
-        
+        const hasInterviewContext = project.interviewContext &&
+          (project.interviewContext as any)?.completedAt;
+
         if (!hasInterviewContext) {
           // Small delay to ensure smooth loading transition
           setTimeout(() => {
@@ -66,7 +66,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
           }, 500);
         }
       }
-      
+
       setHasCheckedInterview(true);
     }
   }, [project, user?.subscriptionStatus, hasCheckedInterview]);
@@ -81,12 +81,6 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
       const response = await apiService.get<Project>(`/api/projects/${shortId}`);
       if (response.success && response.data) {
         setProject(response.data);
-        console.log('Project data refreshed:', {
-          inspiration: response.data.inspirationLinks.length,
-          materials: response.data.materials.length,
-          tasks: response.data.checklistItems.length,
-          notes: response.data.notes.length
-        });
       }
     } catch (error) {
       console.error('Failed to load project:', error);
@@ -109,21 +103,19 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
 
   const handleAiChatPress = () => {
     const isPremiumUser = user?.subscriptionStatus && user.subscriptionStatus !== 'FREE';
-    
-    // Debug logging for subscription status
-    console.log('User subscription status:', user?.subscriptionStatus);
-    console.log('Is premium user:', isPremiumUser);
-    
+
     if (!isPremiumUser) {
       Alert.alert(
         'Premium Feature',
         `AI Chat Assistant is available for premium users. Your current status: ${user?.subscriptionStatus || 'Unknown'}`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Upgrade', style: 'default', onPress: () => {
-            // Navigate to subscription screen
-            navigation.navigate('Subscription' as never);
-          }}
+          {
+            text: 'Upgrade', style: 'default', onPress: () => {
+              // Navigate to subscription screen
+              navigation.navigate('Subscription' as never);
+            }
+          }
         ]
       );
       return;
@@ -131,18 +123,20 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
 
     // Check if project has interview context
     if (project) {
-      const hasInterviewContext = project.interviewContext && 
-                                 (project.interviewContext as any)?.completedAt;
-      
+      const hasInterviewContext = project.interviewContext &&
+        (project.interviewContext as any)?.completedAt;
+
       if (!hasInterviewContext) {
         Alert.alert(
           'Complete Project Setup',
           'Please complete your project setup first to get the most personalized AI assistance.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Complete Setup', style: 'default', onPress: () => {
-              setShowProjectSetup(true);
-            }}
+            {
+              text: 'Complete Setup', style: 'default', onPress: () => {
+                setShowProjectSetup(true);
+              }
+            }
           ]
         );
         return;
@@ -171,7 +165,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
   const getVisibleTabs = () => {
     const config = project?.config as ProjectConfig;
     const isPremiumUser = user?.subscriptionStatus && user.subscriptionStatus !== 'FREE';
-    
+
     return [
       { id: 'overview', label: 'Overview', icon: 'home', visible: true },
       { id: 'inspiration', label: 'Inspiration', icon: 'heart', visible: config?.showInspiration !== false },
@@ -189,18 +183,18 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
     const completedTasks = project.checklistItems.filter(item => item.completed).length;
     const totalTasks = project.checklistItems.length;
     const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-    
+
     const checkedMaterials = project.materials.filter(item => item.checked).length;
     const totalMaterials = project.materials.length;
     const materialsProgress = totalMaterials > 0 ? (checkedMaterials / totalMaterials) * 100 : 0;
 
-    const daysUntilDeadline = project.deadline 
+    const daysUntilDeadline = project.deadline
       ? Math.ceil((new Date(project.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
       : null;
 
     return (
-      <Animated.ScrollView 
-        style={styles.content} 
+      <Animated.ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         entering={FadeIn.duration(300)}
         exiting={FadeOut.duration(200)}
@@ -208,98 +202,98 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
         {/* Project Header */}
         <Animated.View entering={FadeIn.delay(100).duration(400)}>
           <Card variant="glass">
-          <Text style={styles.projectTitle}>{project.title}</Text>
-          {project.goal && (
-            <Text style={styles.projectGoal}>{project.goal}</Text>
-          )}
-          {project.description && (
-            <Text style={styles.projectDescription}>{project.description}</Text>
-          )}
-          {project.deadline && (
-            <View style={styles.deadlineContainer}>
-              <Feather name="calendar" size={16} color="#667eea" />
-              <Text style={styles.projectDeadline}>
-                {new Date(project.deadline).toLocaleDateString()}
-                {daysUntilDeadline !== null && (
-                  <Text style={styles.daysRemaining}>
-                    {daysUntilDeadline > 0 
-                      ? ` (${daysUntilDeadline} days left)`
-                      : daysUntilDeadline === 0 
-                      ? ' (Due today!)'
-                      : ` (${Math.abs(daysUntilDeadline)} days overdue)`
-                    }
-                  </Text>
-                )}
-              </Text>
-            </View>
-          )}
+            <Text style={styles.projectTitle}>{project.title}</Text>
+            {project.goal && (
+              <Text style={styles.projectGoal}>{project.goal}</Text>
+            )}
+            {project.description && (
+              <Text style={styles.projectDescription}>{project.description}</Text>
+            )}
+            {project.deadline && (
+              <View style={styles.deadlineContainer}>
+                <Feather name="calendar" size={16} color="#667eea" />
+                <Text style={styles.projectDeadline}>
+                  {new Date(project.deadline).toLocaleDateString()}
+                  {daysUntilDeadline !== null && (
+                    <Text style={styles.daysRemaining}>
+                      {daysUntilDeadline > 0
+                        ? ` (${daysUntilDeadline} days left)`
+                        : daysUntilDeadline === 0
+                          ? ' (Due today!)'
+                          : ` (${Math.abs(daysUntilDeadline)} days overdue)`
+                      }
+                    </Text>
+                  )}
+                </Text>
+              </View>
+            )}
           </Card>
         </Animated.View>
 
         {/* Progress Dashboard */}
         <Animated.View entering={FadeIn.delay(200).duration(400)}>
           <Card variant="highlighted">
-          <Text style={styles.sectionTitle}>Progress Dashboard</Text>
-          <View style={styles.progressGrid}>
-            <ProjectProgressRing
-              progress={progress}
-              size={70}
-              color="#667eea"
-              label="Tasks"
-              icon="check-circle"
-            />
-            <ProjectProgressRing
-              progress={materialsProgress}
-              size={70}
-              color="#48BB78"
-              label="Materials"
-              icon="package"
-            />
-            <ProjectProgressRing
-              progress={project.inspirationLinks.length > 0 ? 100 : 0}
-              size={70}
-              color="#ED8936"
-              label="Research"
-              icon="heart"
-            />
-          </View>
+            <Text style={styles.sectionTitle}>Progress Dashboard</Text>
+            <View style={styles.progressGrid}>
+              <ProjectProgressRing
+                progress={progress}
+                size={70}
+                color="#667eea"
+                label="Tasks"
+                icon="check-circle"
+              />
+              <ProjectProgressRing
+                progress={materialsProgress}
+                size={70}
+                color="#48BB78"
+                label="Materials"
+                icon="package"
+              />
+              <ProjectProgressRing
+                progress={project.inspirationLinks.length > 0 ? 100 : 0}
+                size={70}
+                color="#ED8936"
+                label="Research"
+                icon="heart"
+              />
+            </View>
           </Card>
         </Animated.View>
 
         {/* Quick Stats */}
         <Animated.View entering={FadeIn.delay(300).duration(400)}>
           <Card variant="glass">
-          <Text style={styles.sectionTitle}>Project Overview</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <View style={styles.statIconContainer}>
-                <Feather name="heart" size={20} color="#ED8936" />
+            <Text style={styles.sectionTitle}>Project Overview</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <View style={styles.statIconContainer}>
+                  <Feather name="heart" size={20} color="#ED8936" />
+                </View>
+                <Text style={styles.statNumber}>{project.inspirationLinks.length}</Text>
+                <Text style={styles.statLabel}>Inspiration</Text>
               </View>
-              <Text style={styles.statNumber}>{project.inspirationLinks.length}</Text>
-              <Text style={styles.statLabel}>Inspiration</Text>
-            </View>
-            <View style={styles.statItem}>
-              <View style={styles.statIconContainer}>
-                <Feather name="package" size={20} color="#48BB78" />
+              <View style={styles.statItem}>
+                <View style={styles.statIconContainer}>
+                  <Feather name="package" size={20} color="#48BB78" />
+                </View>
+                <Text style={styles.statNumber}>{project.materials.length}</Text>
+                <Text style={styles.statLabel}>Materials</Text>
               </View>
-              <Text style={styles.statNumber}>{project.materials.length}</Text>
-              <Text style={styles.statLabel}>Materials</Text>
-            </View>
-            <View style={styles.statItem}>
-              <View style={styles.statIconContainer}>
-                <Feather name="check-square" size={20} color="#667eea" />
+              <View style={styles.statItem}>
+                <View style={styles.statIconContainer}>
+                  <Feather name="check-square" size={20} color="#667eea" />
+                </View>
+                <Text style={styles.statNumber}>{project.checklistItems.length}</Text>
+                <Text style={styles.statLabel}>Tasks</Text>
               </View>
-              <Text style={styles.statNumber}>{project.checklistItems.length}</Text>
-              <Text style={styles.statLabel}>Tasks</Text>
-            </View>
-            <View style={styles.statItem}>
-              <View style={styles.statIconContainer}>
-                <Feather name="file-text" size={20} color="#9F7AEA" />
+              <View style={styles.statItem}>
+                <View style={styles.statIconContainer}>
+                  <Feather name="file-text" size={20} color="#9F7AEA" />
+                </View>
+                <Text style={styles.statNumber}>{project.notes.length}</Text>
+                <Text style={styles.statLabel}>Notes</Text>
               </View>
-              <Text style={styles.statNumber}>{project.notes.length}</Text>
-              <Text style={styles.statLabel}>Notes</Text>
             </View>
-          </View>
           </Card>
         </Animated.View>
 
@@ -307,33 +301,33 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
         {(progress === 100 || materialsProgress === 100 || daysUntilDeadline !== null) && (
           <Animated.View entering={FadeIn.delay(400).duration(400)}>
             <Card variant="elevated">
-            <Text style={styles.sectionTitle}>Smart Insights</Text>
-            <View style={styles.insightsContainer}>
-              {progress === 100 && (
-                <View style={styles.insightItem}>
-                  <Feather name="check-circle" size={16} color="#48BB78" />
-                  <Text style={styles.insightText}>All tasks completed! 🎉</Text>
-                </View>
-              )}
-              {materialsProgress === 100 && (
-                <View style={styles.insightItem}>
-                  <Feather name="package" size={16} color="#48BB78" />
-                  <Text style={styles.insightText}>All materials ready!</Text>
-                </View>
-              )}
-              {daysUntilDeadline !== null && daysUntilDeadline <= 7 && daysUntilDeadline > 0 && (
-                <View style={styles.insightItem}>
-                  <Feather name="clock" size={16} color="#F56565" />
-                  <Text style={styles.insightText}>Deadline approaching - stay focused!</Text>
-                </View>
-              )}
-              {progress < 50 && totalTasks > 0 && (
-                <View style={styles.insightItem}>
-                  <Feather name="trending-up" size={16} color="#667eea" />
-                  <Text style={styles.insightText}>Keep up the momentum!</Text>
-                </View>
-              )}
-            </View>
+              <Text style={styles.sectionTitle}>Smart Insights</Text>
+              <View style={styles.insightsContainer}>
+                {progress === 100 && (
+                  <View style={styles.insightItem}>
+                    <Feather name="check-circle" size={16} color="#48BB78" />
+                    <Text style={styles.insightText}>All tasks completed! 🎉</Text>
+                  </View>
+                )}
+                {materialsProgress === 100 && (
+                  <View style={styles.insightItem}>
+                    <Feather name="package" size={16} color="#48BB78" />
+                    <Text style={styles.insightText}>All materials ready!</Text>
+                  </View>
+                )}
+                {daysUntilDeadline !== null && daysUntilDeadline <= 7 && daysUntilDeadline > 0 && (
+                  <View style={styles.insightItem}>
+                    <Feather name="clock" size={16} color="#F56565" />
+                    <Text style={styles.insightText}>Deadline approaching - stay focused!</Text>
+                  </View>
+                )}
+                {progress < 50 && totalTasks > 0 && (
+                  <View style={styles.insightItem}>
+                    <Feather name="trending-up" size={16} color="#667eea" />
+                    <Text style={styles.insightText}>Keep up the momentum!</Text>
+                  </View>
+                )}
+              </View>
             </Card>
           </Animated.View>
         )}
@@ -341,24 +335,24 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
         {/* Quick Actions */}
         <Animated.View entering={FadeIn.delay(500).duration(400)}>
           <Card variant="default">
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionButtons}>
-            <Button
-              title="Add Inspiration"
-              onPress={() => setActiveTab('inspiration')}
-              variant="outline"
-            />
-            <Button
-              title="Add Materials"
-              onPress={() => setActiveTab('materials')}
-              variant="outline"
-            />
-            <Button
-              title="Add Task"
-              onPress={() => setActiveTab('checklist')}
-              variant="outline"
-            />
-          </View>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.actionButtons}>
+              <Button
+                title="Add Inspiration"
+                onPress={() => setActiveTab('inspiration')}
+                variant="outline"
+              />
+              <Button
+                title="Add Materials"
+                onPress={() => setActiveTab('materials')}
+                variant="outline"
+              />
+              <Button
+                title="Add Task"
+                onPress={() => setActiveTab('checklist')}
+                variant="outline"
+              />
+            </View>
           </Card>
         </Animated.View>
 
@@ -504,7 +498,7 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
         );
       case 'ai':
         const isPremiumUser = user?.subscriptionStatus && user.subscriptionStatus !== 'FREE';
-        
+
         if (!isPremiumUser) {
           return (
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -529,9 +523,9 @@ export const ProjectScreen: React.FC<ProjectScreenProps> = ({ route }) => {
 
         // Check if project needs setup
         if (project) {
-          const hasInterviewContext = project.interviewContext && 
-                                     (project.interviewContext as any)?.completedAt;
-          
+          const hasInterviewContext = project.interviewContext &&
+            (project.interviewContext as any)?.completedAt;
+
           if (!hasInterviewContext) {
             return (
               <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

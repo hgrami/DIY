@@ -88,9 +88,9 @@ export interface SearchFavorite {
 
 export class SearchService {
   // Cache for search results
-  private static searchCache = new Map<string, { 
-    data: SearchResponse; 
-    timestamp: number; 
+  private static searchCache = new Map<string, {
+    data: SearchResponse;
+    timestamp: number;
     ttl: number;
   }>();
 
@@ -101,8 +101,8 @@ export class SearchService {
    */
   private static generateCacheKey(options: SearchOptions): string {
     const { projectContext, ...searchParams } = options;
-    const contextKey = projectContext ? 
-      JSON.stringify({ 
+    const contextKey = projectContext ?
+      JSON.stringify({
         title: projectContext.title,
         materials: projectContext.materials?.slice(0, 3) // Limit for key size
       }) : '';
@@ -149,21 +149,17 @@ export class SearchService {
       // Check cache first
       const cacheKey = this.generateCacheKey(options);
       const cachedResult = this.searchCache.get(cacheKey);
-      
+
       if (cachedResult && this.isCacheValid(cachedResult)) {
-        console.log('[SearchService] Cache hit for query:', options.query);
         return { ...cachedResult.data, fromCache: true };
       }
 
       // Clean expired cache entries periodically
       this.cleanCache();
 
-      console.log('[SearchService] Making API request for:', options.query);
-      console.log('[SearchService] Request options:', options);
-      
       // Make API request
       const response = await apiService.post<SearchResponse>('/api/search', options);
-      
+
       if (!response.success || !response.data) {
         throw new Error('Search request failed');
       }
@@ -191,7 +187,7 @@ export class SearchService {
 
     } catch (error) {
       console.error('[SearchService] Search failed:', error);
-      
+
       // Return graceful fallback
       return {
         success: false,
@@ -212,20 +208,18 @@ export class SearchService {
       // Check cache first for complete results
       const cacheKey = this.generateCacheKey(options);
       const cachedResult = this.searchCache.get(cacheKey);
-      
+
       if (cachedResult && this.isCacheValid(cachedResult) && cachedResult.data.links.length > 0) {
-        console.log('[SearchService] Progressive cache hit for query:', options.query);
-        
         // Yield cached results in batches for consistency
         const results = cachedResult.data.links;
         const batchSize = Math.max(2, Math.ceil(results.length / 3));
         const totalBatches = Math.ceil(results.length / batchSize);
-        
+
         for (let i = 0; i < totalBatches; i++) {
           const start = i * batchSize;
           const end = Math.min(start + batchSize, results.length);
           const batch = results.slice(start, end);
-          
+
           yield {
             batch: i + 1,
             totalBatches,
@@ -238,7 +232,7 @@ export class SearchService {
               totalElapsed: 0
             }
           };
-          
+
           // Small delay between batches for realistic progressive feel
           if (i < totalBatches - 1) {
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -249,8 +243,6 @@ export class SearchService {
 
       // TODO: Implement server-sent events or WebSocket for real progressive search
       // For now, use regular search and simulate progressive delivery
-      console.log('[SearchService] Progressive search fallback for:', options.query);
-      
       const startTime = Date.now();
       const searchResponse = await this.searchDIYResources({
         ...options,
@@ -261,14 +253,14 @@ export class SearchService {
         const results = searchResponse.links;
         const batchSize = Math.max(2, Math.ceil(results.length / 3));
         const totalBatches = Math.ceil(results.length / batchSize);
-        
+
         for (let i = 0; i < totalBatches; i++) {
           const start = i * batchSize;
           const end = Math.min(start + batchSize, results.length);
           const batch = results.slice(start, end);
-          
+
           const batchStart = Date.now();
-          
+
           yield {
             batch: i + 1,
             totalBatches,
@@ -281,7 +273,7 @@ export class SearchService {
               totalElapsed: Date.now() - startTime
             }
           };
-          
+
           // Realistic delay between batches
           if (i < totalBatches - 1) {
             await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
@@ -305,7 +297,7 @@ export class SearchService {
 
     } catch (error) {
       console.error('[SearchService] Progressive search failed:', error);
-      
+
       // Error batch
       yield {
         batch: 1,
@@ -327,13 +319,13 @@ export class SearchService {
    */
   static getSearchSuggestions(project: Project): string[] {
     const suggestions: string[] = [];
-    
+
     // Add project-specific suggestions
     if (project.title) {
       suggestions.push(`${project.title} tutorial`);
       suggestions.push(`${project.title} inspiration`);
     }
-    
+
     // Add material-based suggestions
     if (project.materials && project.materials.length > 0) {
       const topMaterials = project.materials.slice(0, 3);
@@ -342,13 +334,13 @@ export class SearchService {
         suggestions.push(`how to use ${material.name}`);
       });
     }
-    
+
     // Add goal-based suggestions
     if (project.goal) {
       suggestions.push(`${project.goal} ideas`);
       suggestions.push(`${project.goal} tips`);
     }
-    
+
     // Generic DIY suggestions
     const genericSuggestions = [
       'DIY home improvement',
@@ -358,9 +350,9 @@ export class SearchService {
       'budget friendly DIY',
       'weekend projects'
     ];
-    
+
     suggestions.push(...genericSuggestions);
-    
+
     // Remove duplicates and limit
     return [...new Set(suggestions)].slice(0, 10);
   }
@@ -370,7 +362,6 @@ export class SearchService {
    */
   static clearCache(): void {
     this.searchCache.clear();
-    console.log('[SearchService] Cache cleared');
   }
 
   /**
@@ -391,7 +382,6 @@ export class SearchService {
         tags,
         notes
       );
-      console.log('[SearchService] Added to favorites:', searchResult.title);
     } catch (error) {
       console.error('[SearchService] Failed to add to favorites:', error);
       throw error;
@@ -404,7 +394,6 @@ export class SearchService {
   static async removeFromFavorites(url: string): Promise<void> {
     try {
       await SearchHistoryService.removeFromFavoritesByUrl(url);
-      console.log('[SearchService] Removed from favorites:', url);
     } catch (error) {
       console.error('[SearchService] Failed to remove from favorites:', error);
       throw error;

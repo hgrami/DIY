@@ -1,8 +1,8 @@
 import { apiService } from './api';
-import { 
-  Project, 
-  CreateProjectRequest, 
-  UpdateProjectRequest, 
+import {
+  Project,
+  CreateProjectRequest,
+  UpdateProjectRequest,
   CreateProjectData,
   AddInspirationRequest,
   AddMaterialRequest,
@@ -40,7 +40,7 @@ export class ProjectsService {
     if (search) {
       params.append('search', search);
     }
-    
+
     const response = await apiService.get<Project[]>(`/api/projects?${params.toString()}`);
     return {
       success: response.success,
@@ -60,12 +60,15 @@ export class ProjectsService {
     };
   }
 
-  static async createProject(data: CreateProjectData): Promise<Project> {
+  static async createProject(data: CreateProjectData): Promise<ProjectResponse> {
     const response = await apiService.post<Project>('/api/projects', data);
     if (!response.data) {
       throw new Error('Failed to create project');
     }
-    return response.data;
+    return {
+      success: response.success,
+      data: response.data
+    };
   }
 
   static async updateProject(shortId: string, data: UpdateProjectRequest): Promise<ProjectResponse> {

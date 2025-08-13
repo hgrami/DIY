@@ -124,7 +124,7 @@ class ApiService {
       // Try to parse response data
       let data: any;
       const responseText = await response.text();
-      
+
       try {
         data = responseText ? JSON.parse(responseText) : { success: true, data: null };
       } catch (parseError) {
@@ -146,8 +146,6 @@ class ApiService {
 
         // Check if we should retry
         if (await this.shouldRetryRequest(apiError, attempt)) {
-          console.log(`API auth error, retrying request (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}):`, data);
-
           // Wait before retrying with exponential backoff
           const delay = this.retryConfig.baseDelay * Math.pow(this.retryConfig.backoffMultiplier, attempt - 1);
           await this.sleep(delay);
@@ -168,8 +166,6 @@ class ApiService {
 
       // Check if we should retry for server errors
       if (await this.shouldRetryRequest(apiError, attempt)) {
-        console.log(`API error ${response.status}, retrying request (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}):`, data);
-
         const delay = this.retryConfig.baseDelay * Math.pow(this.retryConfig.backoffMultiplier, attempt - 1);
         await this.sleep(delay);
 
@@ -186,8 +182,6 @@ class ApiService {
 
       // For network errors, try to retry
       if (!error.status && await this.shouldRetryRequest(error, attempt)) {
-        console.log(`Network error, retrying request (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}):`, error.message);
-
         const delay = this.retryConfig.baseDelay * Math.pow(this.retryConfig.backoffMultiplier, attempt - 1);
         await this.sleep(delay);
 

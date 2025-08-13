@@ -44,11 +44,11 @@ export class SearchHistoryService {
   ): Promise<void> {
     try {
       const existingHistory = await this.getSearchHistory();
-      
+
       // Remove duplicate if exists (same query, resourceType, contentType)
-      const filteredHistory = existingHistory.filter(item => 
-        !(item.query === query && 
-          item.resourceType === resourceType && 
+      const filteredHistory = existingHistory.filter(item =>
+        !(item.query === query &&
+          item.resourceType === resourceType &&
           item.contentType === contentType)
       );
 
@@ -70,8 +70,7 @@ export class SearchHistoryService {
       const trimmedHistory = updatedHistory.slice(0, MAX_HISTORY_ITEMS);
 
       await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(trimmedHistory));
-      
-      console.log('[SearchHistory] Added to history:', query);
+
     } catch (error) {
       console.error('[SearchHistory] Failed to add to history:', error);
     }
@@ -86,10 +85,10 @@ export class SearchHistoryService {
       if (!historyData) return [];
 
       const history: SearchHistoryItem[] = JSON.parse(historyData);
-      
+
       // Sort by timestamp (most recent first)
       const sortedHistory = history.sort((a, b) => b.timestamp - a.timestamp);
-      
+
       return limit ? sortedHistory.slice(0, limit) : sortedHistory;
     } catch (error) {
       console.error('[SearchHistory] Failed to get history:', error);
@@ -118,7 +117,7 @@ export class SearchHistoryService {
   static async getPopularSearches(limit: number = 5): Promise<Array<{ query: string; count: number }>> {
     try {
       const history = await this.getSearchHistory();
-      
+
       // Count query frequency
       const queryCount = new Map<string, number>();
       history.forEach(item => {
@@ -146,9 +145,8 @@ export class SearchHistoryService {
     try {
       const history = await this.getSearchHistory();
       const updatedHistory = history.filter(item => item.id !== historyItemId);
-      
+
       await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(updatedHistory));
-      console.log('[SearchHistory] Removed from history:', historyItemId);
     } catch (error) {
       console.error('[SearchHistory] Failed to remove from history:', error);
     }
@@ -160,7 +158,6 @@ export class SearchHistoryService {
   static async clearHistory(): Promise<void> {
     try {
       await AsyncStorage.removeItem(STORAGE_KEYS.SEARCH_HISTORY);
-      console.log('[SearchHistory] Cleared all history');
     } catch (error) {
       console.error('[SearchHistory] Failed to clear history:', error);
     }
@@ -178,10 +175,10 @@ export class SearchHistoryService {
   ): Promise<void> {
     try {
       const existingFavorites = await this.getFavorites();
-      
+
       // Check if already favorited (same URL)
       const existingIndex = existingFavorites.findIndex(fav => fav.searchResult.url === searchResult.url);
-      
+
       if (existingIndex >= 0) {
         // Update existing favorite
         existingFavorites[existingIndex] = {
@@ -210,7 +207,6 @@ export class SearchHistoryService {
       const trimmedFavorites = existingFavorites.slice(0, MAX_FAVORITES);
 
       await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_FAVORITES, JSON.stringify(trimmedFavorites));
-      console.log('[SearchHistory] Added to favorites:', searchResult.title);
     } catch (error) {
       console.error('[SearchHistory] Failed to add to favorites:', error);
     }
@@ -225,10 +221,10 @@ export class SearchHistoryService {
       if (!favoritesData) return [];
 
       const favorites: SearchFavorite[] = JSON.parse(favoritesData);
-      
+
       // Sort by creation date (most recent first)
       const sortedFavorites = favorites.sort((a, b) => b.createdAt - a.createdAt);
-      
+
       return limit ? sortedFavorites.slice(0, limit) : sortedFavorites;
     } catch (error) {
       console.error('[SearchHistory] Failed to get favorites:', error);
@@ -243,7 +239,7 @@ export class SearchHistoryService {
     try {
       const allFavorites = await this.getFavorites();
       const projectFavorites = allFavorites.filter(fav => fav.projectId === projectId);
-      
+
       return limit ? projectFavorites.slice(0, limit) : projectFavorites;
     } catch (error) {
       console.error('[SearchHistory] Failed to get project favorites:', error);
@@ -271,9 +267,8 @@ export class SearchHistoryService {
     try {
       const favorites = await this.getFavorites();
       const updatedFavorites = favorites.filter(fav => fav.id !== favoriteId);
-      
+
       await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_FAVORITES, JSON.stringify(updatedFavorites));
-      console.log('[SearchHistory] Removed from favorites:', favoriteId);
     } catch (error) {
       console.error('[SearchHistory] Failed to remove from favorites:', error);
     }
@@ -286,9 +281,8 @@ export class SearchHistoryService {
     try {
       const favorites = await this.getFavorites();
       const updatedFavorites = favorites.filter(fav => fav.searchResult.url !== url);
-      
+
       await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_FAVORITES, JSON.stringify(updatedFavorites));
-      console.log('[SearchHistory] Removed from favorites by URL:', url);
     } catch (error) {
       console.error('[SearchHistory] Failed to remove from favorites by URL:', error);
     }
@@ -304,15 +298,14 @@ export class SearchHistoryService {
     try {
       const favorites = await this.getFavorites();
       const favoriteIndex = favorites.findIndex(fav => fav.id === favoriteId);
-      
+
       if (favoriteIndex >= 0) {
         favorites[favoriteIndex] = {
           ...favorites[favoriteIndex],
           ...updates,
         };
-        
+
         await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_FAVORITES, JSON.stringify(favorites));
-        console.log('[SearchHistory] Updated favorite:', favoriteId);
       }
     } catch (error) {
       console.error('[SearchHistory] Failed to update favorite:', error);
@@ -325,7 +318,6 @@ export class SearchHistoryService {
   static async clearFavorites(): Promise<void> {
     try {
       await AsyncStorage.removeItem(STORAGE_KEYS.SEARCH_FAVORITES);
-      console.log('[SearchHistory] Cleared all favorites');
     } catch (error) {
       console.error('[SearchHistory] Failed to clear favorites:', error);
     }
@@ -417,12 +409,11 @@ export class SearchHistoryService {
       if (data.history) {
         await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(data.history));
       }
-      
+
       if (data.favorites) {
         await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_FAVORITES, JSON.stringify(data.favorites));
       }
 
-      console.log('[SearchHistory] Imported search data successfully');
     } catch (error) {
       console.error('[SearchHistory] Failed to import search data:', error);
       throw error;

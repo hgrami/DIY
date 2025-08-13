@@ -91,7 +91,6 @@ export const AiChatModal: React.FC<AiChatModalProps> = ({
     scrollToBottom();
 
     try {
-      console.log(`Making AI chat request to: /api/projects/${project.shortId}/ai-chat`);
       const response = await apiService.post<any>(`/api/projects/${project.shortId}/ai-chat`, {
         message: message.trim(),
         threadId: currentThreadId,
@@ -107,7 +106,6 @@ export const AiChatModal: React.FC<AiChatModalProps> = ({
         }
       });
 
-      console.log('AI Chat API Response:', JSON.stringify(response, null, 2));
 
       if (response.success && response.data) {
         // Handle function calls with null message
@@ -138,7 +136,6 @@ export const AiChatModal: React.FC<AiChatModalProps> = ({
         // Update thread ID if returned from API (either new thread or continuing thread)
         if (response.data.threadId) {
           if (response.data.threadId !== currentThreadId) {
-            console.log('🔍 [AiChatModal] Backend returned thread ID:', response.data.threadId, 'Current:', currentThreadId);
             setCurrentThreadId(response.data.threadId);
           }
         }
@@ -171,7 +168,6 @@ export const AiChatModal: React.FC<AiChatModalProps> = ({
 
       // Handle deleted thread error - clear thread and start fresh
       if (error?.message?.includes('thread not found') || error?.message?.includes('Chat thread not found')) {
-        console.log('🔍 [AiChatModal] Thread was deleted, clearing currentThreadId and starting fresh');
         setCurrentThreadId(undefined);
         setMessages([]);
       }
@@ -184,8 +180,8 @@ export const AiChatModal: React.FC<AiChatModalProps> = ({
         content: error?.message?.includes('JSON')
           ? 'I apologize, but there was a connection issue. Please check your internet connection and try again.'
           : error?.message?.includes('thread not found') || error?.message?.includes('Chat thread not found')
-          ? 'Starting a fresh conversation. Please try your message again.'
-          : 'I apologize, but I encountered an issue processing your request. Please try again.',
+            ? 'Starting a fresh conversation. Please try your message again.'
+            : 'I apologize, but I encountered an issue processing your request. Please try again.',
         createdAt: new Date(),
       };
 
@@ -206,17 +202,14 @@ export const AiChatModal: React.FC<AiChatModalProps> = ({
   useEffect(() => {
     if (visible && !initialThreadId && !currentThreadId) {
       // Only clear if we don't have a current thread (maintain session persistence)
-      console.log('🔍 [AiChatModal] No initial thread, starting fresh');
       setCurrentThreadId(undefined);
       setMessages([]);
     } else if (visible && currentThreadId) {
       // We already have a thread - maintain it
-      console.log('🔍 [AiChatModal] Maintaining current thread:', currentThreadId);
     }
   }, [visible, initialThreadId, currentThreadId]);
 
   const handleNewThread = useCallback(() => {
-    console.log('🔍 [AiChatModal] Starting new thread');
     setCurrentThreadId(undefined);
     setMessages([]);
     setInputText('');
@@ -332,14 +325,12 @@ export const AiChatModal: React.FC<AiChatModalProps> = ({
               projectId={project.id}
               projectShortId={project.shortId}
               onResourceAdded={(resource) => {
-                console.log('Resource added:', resource);
                 // Trigger project data refresh
                 if (onProjectUpdate) {
                   onProjectUpdate();
                 }
               }}
               onAllResourcesProcessed={() => {
-                console.log('All resources processed for message:', item.id);
               }}
             />
           </View>

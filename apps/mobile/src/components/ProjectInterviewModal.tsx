@@ -61,13 +61,10 @@ export const ProjectInterviewModal: React.FC<ProjectInterviewModalProps> = ({
   onComplete,
 }) => {
   const [questions, setQuestions] = useState<InterviewQuestion[]>(() => {
-    console.log('ProjectInterviewModal - Initializing questions from interviewData:', interviewData);
     if (!interviewData?.questions || !Array.isArray(interviewData.questions)) {
-      console.warn('ProjectInterviewModal - Invalid interviewData.questions:', interviewData?.questions);
       return [];
     }
     const mappedQuestions = interviewData.questions.map(q => ({ question: q, answer: '' }));
-    console.log('ProjectInterviewModal - Mapped questions:', mappedQuestions);
     return mappedQuestions;
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,11 +86,6 @@ export const ProjectInterviewModal: React.FC<ProjectInterviewModalProps> = ({
         true
       );
     }
-
-    // Debug logging
-    console.log('ProjectInterviewModal - Questions:', questions);
-    console.log('ProjectInterviewModal - Current question:', questions[currentQuestionIndex]);
-    console.log('ProjectInterviewModal - Current index:', currentQuestionIndex);
   }, [visible, questions, currentQuestionIndex]);
 
   const handleAnswerChange = useCallback((index: number, answer: string) => {

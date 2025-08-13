@@ -63,7 +63,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
   const [showHistory, setShowHistory] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  
+
   // Action modals
   const [selectedResult, setSelectedResult] = useState<DIYSearchResult | null>(null);
   const [showActionSheet, setShowActionSheet] = useState(false);
@@ -76,9 +76,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
 
   // Reset state when modal opens/closes
   useEffect(() => {
-    console.log('ProgressiveSearchModal isVisible changed:', isVisible);
     if (isVisible) {
-      console.log('Modal opening, resetting state');
       setQuery(initialQuery);
       setResourceType(initialResourceType);
       setContentType('mixed');
@@ -89,7 +87,6 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
       setShowHistory(false);
       setShowFavorites(false);
     } else {
-      console.log('Modal closing, cleaning up');
       // Cleanup when modal closes
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -106,7 +103,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
-      
+
       searchTimeoutRef.current = setTimeout(() => {
         handleSearch();
       }, 300);
@@ -131,7 +128,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
 
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
+
       setIsSearching(true);
       setSearchResults([]);
       setBatchInfo(null);
@@ -258,7 +255,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
 
   const handleAddToFavorites = async () => {
     if (!selectedResult) return;
-    
+
     try {
       await SearchService.addToFavorites(
         selectedResult,
@@ -274,7 +271,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
 
   const handleShare = async () => {
     if (!selectedResult) return;
-    
+
     try {
       await Share.share({
         message: `Check out this DIY resource: ${selectedResult.title}\n\n${selectedResult.url}`,
@@ -291,7 +288,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
 
     try {
       let response;
-      
+
       switch (resourceType) {
         case 'inspiration':
           response = await ProjectsService.addInspiration(selectedProject.shortId, {
@@ -303,7 +300,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
             tags: selectedResult.tags || [],
           });
           break;
-          
+
         case 'material':
           response = await ProjectsService.addMaterial(selectedProject.shortId, {
             name: selectedResult.title,
@@ -314,7 +311,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
             url: selectedResult.url,
           });
           break;
-          
+
         case 'checklist':
           response = await ProjectsService.addChecklistItem(selectedProject.shortId, {
             title: selectedResult.title,
@@ -327,7 +324,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
 
       Alert.alert('Success', `Added to ${selectedProject.title} as ${resourceType}`);
       setSelectedResult(null);
-      
+
     } catch (error) {
       console.error(`Failed to add to project as ${resourceType}:`, error);
       Alert.alert('Error', `Failed to add to project`);
@@ -415,13 +412,13 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
     // Default state - show suggestions
     const suggestions = project ? SearchService.getSearchSuggestions(project) : [
       'DIY home improvement',
-      'beginner friendly projects', 
+      'beginner friendly projects',
       'step by step tutorials',
       'before and after transformations',
       'budget friendly DIY',
       'weekend projects'
     ];
-    
+
     return (
       <SearchSuggestions
         suggestions={suggestions}
@@ -431,8 +428,6 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
     );
   };
 
-  console.log('ProgressiveSearchModal render, isVisible:', isVisible);
-  
   return (
     <NativeModal
       isVisible={isVisible}
@@ -479,7 +474,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
           <Feather name="search" size={16} color={!showHistory && !showFavorites ? "#667eea" : "rgba(255, 255, 255, 0.6)"} />
           <Text style={[styles.tabText, !showHistory && !showFavorites && styles.activeTabText]}>Search</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.tab, showHistory && styles.activeTab]}
           onPress={() => {
@@ -490,7 +485,7 @@ export const ProgressiveSearchModal: React.FC<ProgressiveSearchModalProps> = ({
           <Feather name="clock" size={16} color={showHistory ? "#667eea" : "rgba(255, 255, 255, 0.6)"} />
           <Text style={[styles.tabText, showHistory && styles.activeTabText]}>History</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.tab, showFavorites && styles.activeTab]}
           onPress={() => {

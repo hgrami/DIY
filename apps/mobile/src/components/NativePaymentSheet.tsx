@@ -42,10 +42,7 @@ export const NativePaymentSheet: React.FC<NativePaymentSheetProps> = ({
   useEffect(() => {
     const handleDeepLink = async (url: string | null) => {
       if (url && url.includes(`${paymentConfig.app.returnUrlScheme}://payment-return`)) {
-        const stripeHandled = await handleURLCallback(url);
-        if (stripeHandled) {
-          console.log('Stripe handled URL:', url);
-        }
+        await handleURLCallback(url);
       }
     };
 
@@ -66,7 +63,6 @@ export const NativePaymentSheet: React.FC<NativePaymentSheetProps> = ({
   const initializePaymentSheet = useCallback(async () => {
     try {
       setIsLoading(true);
-      console.log('Creating Payment Intent for price:', priceId);
 
       // Create Payment Intent on backend
       const response = await apiService.post<{ clientSecret: string }>('/subscriptions/create-payment-intent', {
@@ -78,7 +74,6 @@ export const NativePaymentSheet: React.FC<NativePaymentSheetProps> = ({
       }
 
       const { clientSecret } = response.data;
-      console.log('Initializing PaymentSheet with client secret');
 
       // Initialize the payment sheet
       const { error } = await initPaymentSheet({
@@ -107,7 +102,6 @@ export const NativePaymentSheet: React.FC<NativePaymentSheetProps> = ({
       }
 
       setIsInitialized(true);
-      console.log('PaymentSheet initialized successfully');
 
     } catch (error) {
       console.error('Error initializing payment:', error);
@@ -119,7 +113,6 @@ export const NativePaymentSheet: React.FC<NativePaymentSheetProps> = ({
 
   const handlePayment = useCallback(async () => {
     if (!isInitialized) {
-      console.log('PaymentSheet not initialized, initializing first...');
       await initializePaymentSheet();
       return;
     }
@@ -127,25 +120,21 @@ export const NativePaymentSheet: React.FC<NativePaymentSheetProps> = ({
     try {
       setIsLoading(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      console.log('Presenting PaymentSheet');
 
       const { error } = await presentPaymentSheet();
 
       if (error) {
         if (error.code === 'Canceled') {
-          console.log('Payment was canceled by user');
           onCancel();
           return;
         }
-        
+
         console.error('Error presenting PaymentSheet:', error);
         Alert.alert('Payment Failed', error.message || 'An error occurred during payment.');
         return;
       }
 
       // Payment succeeded
-      console.log('Payment succeeded!');
-      
       Alert.alert(
         'Success!',
         `Your ${planName} subscription is now active! Welcome to premium.`,

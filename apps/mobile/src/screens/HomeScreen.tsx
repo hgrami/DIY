@@ -49,38 +49,31 @@ export const HomeScreen: React.FC = () => {
 
   const handleSearchPress = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    console.log('Search button pressed, user subscription:', user?.subscriptionStatus);
-    console.log('Setting searchVisible to true');
-    
-    // For testing - let's see what the user subscription status is
-    console.log('User object:', user);
-    console.log('User subscription status:', user?.subscriptionStatus);
-    
+
+
     // Temporarily allow all users to test API
-    // if (user?.subscriptionStatus === 'FREE') {
-    //   Alert.alert(
-    //     'Premium Feature',
-    //     'Search is only available for Premium users. Upgrade your plan to access search functionality.',
-    //     [
-    //       { text: 'Cancel', style: 'cancel' },
-    //       { 
-    //         text: 'Upgrade', 
-    //         onPress: () => navigation.navigate('Subscription')
-    //       }
-    //     ]
-    //   );
-    //   return;
-    // }
-    
+    if (user?.subscriptionStatus === 'FREE') {
+      Alert.alert(
+        'Premium Feature',
+        'Search is only available for Premium users. Upgrade your plan to access search functionality.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Upgrade',
+            onPress: () => navigation.navigate('Subscription')
+          }
+        ]
+      );
+      return;
+    }
     setSearchVisible(true);
-    console.log('Search modal should now be visible');
+
   };
 
   const handleSearchResultSelect = async (result: DIYSearchResult) => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      
+
       Alert.alert(
         'Open Resource',
         `Open "${result.title}" in your browser?`,
@@ -107,214 +100,213 @@ export const HomeScreen: React.FC = () => {
     } catch (error) {
       console.error('Failed to handle search result:', error);
     }
-    
+
     setSearchVisible(false);
   };
 
   return (
     <>
-    <LinearGradient
-      colors={['#667eea', '#764ba2']}
-      style={styles.container}
-    >
-      <StatusBar barStyle="light-content" />
+      <LinearGradient
+        colors={['#667eea', '#764ba2']}
+        style={styles.container}
+      >
+        <StatusBar barStyle="light-content" />
 
-      {/* Top Bar */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.hamburgerButton}
-          onPress={handleDrawerToggle}
-        >
-          <Feather name="menu" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+        {/* Top Bar */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.hamburgerButton}
+            onPress={handleDrawerToggle}
+          >
+            <Feather name="menu" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
 
-        <GlassMenuButton
-          text={user?.email?.charAt(0).toUpperCase() || 'U'}
-          popoverPosition="bottom-left"
-          popoverWidth={320}
-          popoverHeight={240}
-          onOpenChange={setGlassMenuOpen}
-          renderPopover={() => (
-            <UserMenuContent
-              user={user}
-              onSettingsPress={() => navigation.navigate('Settings')}
-              onSubscriptionPress={() => navigation.navigate('Subscription')}
-              onLogout={handleLogout}
-              onClose={() => setGlassMenuOpen(false)}
-            />
-          )}
-        />
-      </View>
+          <GlassMenuButton
+            text={user?.email?.charAt(0).toUpperCase() || 'U'}
+            popoverPosition="bottom-left"
+            popoverWidth={320}
+            popoverHeight={240}
+            onOpenChange={setGlassMenuOpen}
+            renderPopover={() => (
+              <UserMenuContent
+                user={user}
+                onSettingsPress={() => navigation.navigate('Settings')}
+                onSubscriptionPress={() => navigation.navigate('Subscription')}
+                onLogout={handleLogout}
+                onClose={() => setGlassMenuOpen(false)}
+              />
+            )}
+          />
+        </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Welcome Card */}
-        <Card variant="elevated">
-          <Text style={styles.welcomeTitle}>Welcome back!</Text>
-          <Text style={styles.welcomeSubtitle}>
-            {user?.email || 'User'}
-          </Text>
-          <Text style={styles.subscriptionStatus}>
-            Current Plan: {user?.subscriptionStatus || 'FREE'}
-          </Text>
-        </Card>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Welcome Card */}
+          <Card variant="elevated">
+            <Text style={styles.welcomeTitle}>Welcome back!</Text>
+            <Text style={styles.welcomeSubtitle}>
+              {user?.email || 'User'}
+            </Text>
+            <Text style={styles.subscriptionStatus}>
+              Current Plan: {user?.subscriptionStatus || 'FREE'}
+            </Text>
+          </Card>
 
-        {/* Quick Actions */}
-        <Card>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionButtons}>
-            <Button
-              title="Search DIY Resources"
-              onPress={handleSearchPress}
-              variant="primary"
-            />
-            <Button
-              title="My Projects"
-              onPress={() => navigation.navigate('Projects' as any)}
-              variant="outline"
-            />
-            <Button
-              title="Upgrade Plan"
-              onPress={() => navigation.navigate('Subscription')}
-              variant="secondary"
-              size="medium"
-              style={styles.actionButton}
-            />
-            <Button
-              title="View Analytics"
-              onPress={() => {/* Navigate to analytics */ }}
-              variant="outline"
-              size="medium"
-              style={styles.actionButton}
-            />
-          </View>
-        </Card>
+          {/* Quick Actions */}
+          <Card>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.actionButtons}>
+              <Button
+                title="Search DIY Resources"
+                onPress={handleSearchPress}
+                variant="primary"
+              />
+              <Button
+                title="My Projects"
+                onPress={() => navigation.navigate('Projects' as any)}
+                variant="outline"
+              />
+              <Button
+                title="Upgrade Plan"
+                onPress={() => navigation.navigate('Subscription')}
+                variant="secondary"
+                size="medium"
+                style={styles.actionButton}
+              />
+              <Button
+                title="View Analytics"
+                onPress={() => {/* Navigate to analytics */ }}
+                variant="outline"
+                size="medium"
+                style={styles.actionButton}
+              />
+            </View>
+          </Card>
 
-        {/* Coming Soon Banner */}
-        <Card>
-          <View style={styles.comingSoonContainer}>
-            <Feather name="clock" size={20} color="#FFA726" />
-            <Text style={styles.comingSoonTitle}>Coming Soon</Text>
-          </View>
-          <Text style={styles.comingSoonText}>
-            Advanced analytics, team collaboration, and AI-powered project insights are on the way!
-          </Text>
-        </Card>
+          {/* Coming Soon Banner */}
+          <Card>
+            <View style={styles.comingSoonContainer}>
+              <Feather name="clock" size={20} color="#FFA726" />
+              <Text style={styles.comingSoonTitle}>Coming Soon</Text>
+            </View>
+            <Text style={styles.comingSoonText}>
+              Advanced analytics, team collaboration, and AI-powered project insights are on the way!
+            </Text>
+          </Card>
 
-        {/* Favorite Projects */}
-        <Card>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Favorite Projects</Text>
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All</Text>
-              <Feather name="chevron-right" size={16} color="rgba(255, 255, 255, 0.7)" />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.projectsContainer}>
-            <View style={styles.projectCard}>
-              <View style={styles.projectIcon}>
-                <Feather name="star" size={16} color="#FFA726" />
+          {/* Favorite Projects */}
+          <Card>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Favorite Projects</Text>
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+                <Feather name="chevron-right" size={16} color="rgba(255, 255, 255, 0.7)" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.projectsContainer}>
+              <View style={styles.projectCard}>
+                <View style={styles.projectIcon}>
+                  <Feather name="star" size={16} color="#FFA726" />
+                </View>
+                <View style={styles.projectInfo}>
+                  <Text style={styles.projectTitle}>Kitchen Renovation</Text>
+                  <Text style={styles.projectProgress}>75% Complete</Text>
+                </View>
               </View>
-              <View style={styles.projectInfo}>
-                <Text style={styles.projectTitle}>Kitchen Renovation</Text>
-                <Text style={styles.projectProgress}>75% Complete</Text>
+              <View style={styles.projectCard}>
+                <View style={styles.projectIcon}>
+                  <Feather name="star" size={16} color="#FFA726" />
+                </View>
+                <View style={styles.projectInfo}>
+                  <Text style={styles.projectTitle}>Garden Landscaping</Text>
+                  <Text style={styles.projectProgress}>30% Complete</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={styles.addProjectCard}>
+                <Feather name="plus" size={20} color="rgba(255, 255, 255, 0.6)" />
+                <Text style={styles.addProjectText}>Add to Favorites</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+
+          {/* Recent Projects */}
+          <Card>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Projects</Text>
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+                <Feather name="chevron-right" size={16} color="rgba(255, 255, 255, 0.7)" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.projectsContainer}>
+              <View style={styles.projectCard}>
+                <View style={styles.projectIcon}>
+                  <Feather name="tool" size={16} color="#4FC3F7" />
+                </View>
+                <View style={styles.projectInfo}>
+                  <Text style={styles.projectTitle}>Bathroom Upgrade</Text>
+                  <Text style={styles.projectProgress}>Last edited: 2 hours ago</Text>
+                </View>
+              </View>
+              <View style={styles.projectCard}>
+                <View style={styles.projectIcon}>
+                  <Feather name="home" size={16} color="#81C784" />
+                </View>
+                <View style={styles.projectInfo}>
+                  <Text style={styles.projectTitle}>Living Room Paint</Text>
+                  <Text style={styles.projectProgress}>Last edited: Yesterday</Text>
+                </View>
+              </View>
+              <View style={styles.projectCard}>
+                <View style={styles.projectIcon}>
+                  <Feather name="settings" size={16} color="#FFB74D" />
+                </View>
+                <View style={styles.projectInfo}>
+                  <Text style={styles.projectTitle}>Deck Repair</Text>
+                  <Text style={styles.projectProgress}>Last edited: 3 days ago</Text>
+                </View>
               </View>
             </View>
-            <View style={styles.projectCard}>
-              <View style={styles.projectIcon}>
-                <Feather name="star" size={16} color="#FFA726" />
-              </View>
-              <View style={styles.projectInfo}>
-                <Text style={styles.projectTitle}>Garden Landscaping</Text>
-                <Text style={styles.projectProgress}>30% Complete</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.addProjectCard}>
-              <Feather name="plus" size={20} color="rgba(255, 255, 255, 0.6)" />
-              <Text style={styles.addProjectText}>Add to Favorites</Text>
-            </TouchableOpacity>
-          </View>
-        </Card>
+          </Card>
 
-        {/* Recent Projects */}
-        <Card>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Projects</Text>
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All</Text>
-              <Feather name="chevron-right" size={16} color="rgba(255, 255, 255, 0.7)" />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.projectsContainer}>
-            <View style={styles.projectCard}>
-              <View style={styles.projectIcon}>
-                <Feather name="tool" size={16} color="#4FC3F7" />
-              </View>
-              <View style={styles.projectInfo}>
-                <Text style={styles.projectTitle}>Bathroom Upgrade</Text>
-                <Text style={styles.projectProgress}>Last edited: 2 hours ago</Text>
-              </View>
+          {/* Recent Activity */}
+          <Card>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <View style={styles.activityItem}>
+              <View style={styles.activityDot} />
+              <Text style={styles.activityText}>Last login: Today</Text>
             </View>
-            <View style={styles.projectCard}>
-              <View style={styles.projectIcon}>
-                <Feather name="home" size={16} color="#81C784" />
-              </View>
-              <View style={styles.projectInfo}>
-                <Text style={styles.projectTitle}>Living Room Paint</Text>
-                <Text style={styles.projectProgress}>Last edited: Yesterday</Text>
-              </View>
+            <View style={styles.activityItem}>
+              <View style={styles.activityDot} />
+              <Text style={styles.activityText}>Plan: {user?.subscriptionStatus}</Text>
             </View>
-            <View style={styles.projectCard}>
-              <View style={styles.projectIcon}>
-                <Feather name="settings" size={16} color="#FFB74D" />
-              </View>
-              <View style={styles.projectInfo}>
-                <Text style={styles.projectTitle}>Deck Repair</Text>
-                <Text style={styles.projectProgress}>Last edited: 3 days ago</Text>
-              </View>
-            </View>
-          </View>
-        </Card>
+          </Card>
+        </ScrollView>
 
-        {/* Recent Activity */}
-        <Card>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityItem}>
-            <View style={styles.activityDot} />
-            <Text style={styles.activityText}>Last login: Today</Text>
-          </View>
-          <View style={styles.activityItem}>
-            <View style={styles.activityDot} />
-            <Text style={styles.activityText}>Plan: {user?.subscriptionStatus}</Text>
-          </View>
-        </Card>
-      </ScrollView>
+        {/* Legacy User Dropdown - Keep for backward compatibility but hidden when glass menu is active */}
+        {!glassMenuOpen && (
+          <UserDropdown
+            user={user}
+            isVisible={dropdownVisible}
+            onClose={() => setDropdownVisible(false)}
+            onSettingsPress={() => navigation.navigate('Settings')}
+            onSubscriptionPress={() => navigation.navigate('Subscription')}
+            onLogout={handleLogout}
+          />
+        )}
+      </LinearGradient>
 
-      {/* Legacy User Dropdown - Keep for backward compatibility but hidden when glass menu is active */}
-      {!glassMenuOpen && (
-        <UserDropdown
-          user={user}
-          isVisible={dropdownVisible}
-          onClose={() => setDropdownVisible(false)}
-          onSettingsPress={() => navigation.navigate('Settings')}
-          onSubscriptionPress={() => navigation.navigate('Subscription')}
-          onLogout={handleLogout}
-        />
-      )}
-    </LinearGradient>
-    
-    {/* Search Modal - outside LinearGradient */}
-    <ProgressiveSearchModal
-      isVisible={searchVisible}
-      onClose={() => setSearchVisible(false)}
-      onResultSelect={handleSearchResultSelect}
-      onProjectCreated={(projectShortId) => {
-        console.log('New project created:', projectShortId);
-        setSearchVisible(false);
-      }}
-      initialQuery=""
-      initialResourceType="tutorial"
-    />
-  </>
+      {/* Search Modal - outside LinearGradient */}
+      <ProgressiveSearchModal
+        isVisible={searchVisible}
+        onClose={() => setSearchVisible(false)}
+        onResultSelect={handleSearchResultSelect}
+        onProjectCreated={(projectShortId) => {
+          setSearchVisible(false);
+        }}
+        initialQuery=""
+        initialResourceType="tutorial"
+      />
+    </>
   );
 };
 

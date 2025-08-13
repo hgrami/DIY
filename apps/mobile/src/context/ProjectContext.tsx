@@ -63,9 +63,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [formData, setFormData] = useState({ title: '', goal: '', description: '', deadline: '' });
   const createProjectFormRef = useRef<CreateProjectFormRef>(null);
 
-  // Memoize snap points (strings like gorhom for familiarity)
-  const snapPoints = useMemo(() => ['55%', '75%', '92%'], []);
-
   const openCreateProjectModal = useCallback(() => {
     setIsCreateModalVisible(true);
     setTimeout(() => {
@@ -224,9 +221,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   deadline: formData.deadline ? new Date(formData.deadline) : undefined,
                   config,
                 };
-                const response = await ProjectsService.createProject(projectData);
-                if (response.success) {
-                  handleProjectCreated(response.data.shortId, response.data);
+                const data = await ProjectsService.createProject(projectData);
+                if (data.success) {
+                  handleProjectCreated(data.data.shortId, data.data);
                   setFormData({ title: '', goal: '', description: '', deadline: '' });
                 } else {
                   Alert.alert('Error', 'Failed to create project');

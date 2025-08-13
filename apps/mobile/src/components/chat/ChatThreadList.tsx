@@ -49,9 +49,7 @@ export const ChatThreadList: React.FC<ChatThreadListProps> = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('🔍 [ChatThreadList] Visibility changed to:', visible);
     if (visible) {
-      console.log('🔍 [ChatThreadList] Loading chat threads for project:', projectShortId);
       loadChatThreads();
     }
   }, [visible, projectShortId]);
@@ -73,17 +71,13 @@ export const ChatThreadList: React.FC<ChatThreadListProps> = ({
 
   const handleThreadSelect = async (threadId: string) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    console.log('🔍 [ChatThreadList] Thread selected:', threadId);
     onThreadSelect(threadId);
-    console.log('🔍 [ChatThreadList] Calling onClose after thread selection');
     onClose();
   };
 
   const handleNewThread = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    console.log('🔍 [ChatThreadList] New thread requested');
     onNewThread();
-    console.log('🔍 [ChatThreadList] Calling onClose after new thread');
     onClose();
   };
 
@@ -223,14 +217,9 @@ export const ChatThreadList: React.FC<ChatThreadListProps> = ({
     </Animated.View>
   );
 
-  console.log('🔍 [ChatThreadList] Render check - visible:', visible);
-  
   if (!visible) {
-    console.log('🔍 [ChatThreadList] Not visible, returning null');
     return null;
   }
-
-  console.log('🔍 [ChatThreadList] Rendering modal with threads:', threads.length);
 
   return (
     <Modal

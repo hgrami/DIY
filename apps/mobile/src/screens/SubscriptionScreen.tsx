@@ -7,9 +7,6 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
-  TextInput,
-  Keyboard,
-  Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuthContext } from '../context/AuthContext';
@@ -17,7 +14,6 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { ScreenWithHeader } from '../components/ScreenWithHeader';
 import { NativePaymentSheet } from '../components/NativePaymentSheet';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { apiService } from '../services/api';
 import { StripeProduct, Subscription, PromoCodeRedemptionResponse } from '../@types';
 import { PromoCodeModal, PromoCodeModalRef } from '../components/Subscriptions/PromoCodeModal';
@@ -90,7 +86,6 @@ export const SubscriptionScreen: React.FC = () => {
       const response = await apiService.get<StripeProduct[]>('/subscriptions/products');
 
       if (response.success && response.data) {
-        console.log('response.data', response.data);
         setProducts(response.data);
       }
     } catch (error) {
@@ -501,9 +496,7 @@ export const SubscriptionScreen: React.FC = () => {
                                 refreshUser()
                               ]);
                             }}
-                            onCancel={() => {
-                              console.log('Payment cancelled by user');
-                            }}
+                            onCancel={() => { }}
                             disabled={loading}
                             loading={loading}
                           />
