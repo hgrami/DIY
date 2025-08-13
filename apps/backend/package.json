@@ -21,6 +21,7 @@
     "@prisma/client": "^6.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
+    "exa-js": "^1.8.27",
     "express": "^4.18.0",
     "helmet": "^7.0.0",
     "morgan": "^1.10.0",

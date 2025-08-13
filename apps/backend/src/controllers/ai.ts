@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthenticatedRequest } from '../types';
 import { OpenAIService } from '../services/openai';
+import { ExaService, SearchOptions } from '../services/exa';
 
 const prisma = new PrismaClient();
 
@@ -305,6 +306,79 @@ export class AIController {
     } catch (error) {
       console.error('Delete chat thread error:', error);
       res.status(500).json({ error: 'Failed to delete chat thread' });
+    }
+  }
+
+  static async search(req: AuthenticatedRequest, res: Response) {
+    try {
+      console.log('[AI Controller] Search request received');
+      console.log('[AI Controller] User ID:', req.user?.id);
+      console.log('[AI Controller] Search options:', req.body);
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const searchOptions: SearchOptions = req.body;
+
+      if (!searchOptions.query) {
+        return res.status(400).json({ error: 'Search query is required' });
+      }
+
+      if (!searchOptions.resourceType) {
+        return res.status(400).json({ error: 'Resource type is required' });
+      }
+
+      // Check user subscription for premium features
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+      });
+
+      if (user?.subscriptionStatus === 'FREE') {
+        return res.status(403).json({ 
+          error: 'Search is only available for Premium users. Upgrade to use search assistance.' 
+        });
+      }
+
+      console.log('[AI Controller] Processing search for:', searchOptions.query);
+      
+      // Process search request
+      const result = await ExaService.searchDIYResources(searchOptions);
+
+      console.log('[AI Controller] Search result:', {
+        success: result.success,
+        resultCount: result.links.length,
+        fromCache: result.fromCache
+      });
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error('Search error:', error);
+      res.status(500).json({ error: 'Failed to process search request' });
+    }
+  }
+
+  static async getPerformanceMetrics(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      // Only allow admin users to access performance metrics
+      // You might want to add an admin check here
+      
+      const metrics = ExaService.getPerformanceMetrics();
+      
+      res.json({
+        success: true,
+        data: metrics,
+      });
+    } catch (error) {
+      console.error('Get performance metrics error:', error);
+      res.status(500).json({ error: 'Failed to get performance metrics' });
     }
   }
 }

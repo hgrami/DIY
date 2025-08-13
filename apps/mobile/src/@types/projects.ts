@@ -120,7 +120,15 @@ export interface CreateProjectRequest {
   description?: string;
   deadline?: Date;
   config?: Partial<ProjectConfig>;
+  inspiration?: Omit<InspirationLink, 'id' | 'projectId' | 'createdAt' | 'updatedAt'>[];
+  materials?: Omit<MaterialItem, 'id' | 'projectId' | 'createdAt' | 'updatedAt' | 'checked'>[];
+  checklists?: {
+    title: string;
+    items: Omit<ProjectChecklistItem, 'id' | 'projectId' | 'createdAt' | 'updatedAt'>[];
+  }[];
 }
+
+export type CreateProjectData = CreateProjectRequest;
 
 export interface UpdateProjectRequest {
   title?: string;
@@ -141,4 +149,31 @@ export interface AiChatResponse {
     arguments: any;
     result: any;
   };
+}
+
+// Individual resource types for adding to projects
+export interface AddInspirationRequest {
+  title: string;
+  url: string;
+  imageUrl?: string;
+  description?: string;
+  source?: string;
+  difficulty?: string;
+  tags?: string[];
+}
+
+export interface AddMaterialRequest {
+  name: string;
+  quantity: string;
+  estimatedPrice?: number;
+  url?: string;
+  notes?: string;
+  checked: boolean;
+}
+
+export interface AddChecklistItemRequest {
+  title: string;
+  description?: string;
+  completed: boolean;
+  order: number;
 }

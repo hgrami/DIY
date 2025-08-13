@@ -19,6 +19,101 @@ export interface AiMessage {
 }
 
 export class OpenAIService {
+  static async optimizeSearchQuery(
+    userMessage: string,
+    resourceType: 'tutorial' | 'inspiration' | 'materials',
+    contentType: 'video' | 'visual' | 'article' | 'mixed',
+    project: any
+  ): Promise<{
+    optimizedQuery: string;
+    searchTerms: string[];
+    reasoning: string;
+  }> {
+    try {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a search query optimization expert for DIY projects. Your job is to create highly relevant search queries for Exa.ai based on user requests and project context.
+
+Project Context:
+- Title: ${project.title}
+- Goal: ${project.goal || 'Not specified'}
+- Description: ${project.description || 'Not specified'}
+- Materials: ${project.materials?.map((m: any) => m.name).join(', ') || 'None listed'}
+
+User wants: ${resourceType} content (${contentType} format)
+User message: "${userMessage}"
+
+Create a focused search query that will find exactly what the user needs for their specific project. Be precise and avoid generic terms that could lead to irrelevant results.
+
+Guidelines:
+- Use specific project-related terms from the context
+- Include relevant technical terms for the project type
+- For visual content: add terms like "photos", "gallery", "before after", "examples"
+- For videos: add terms like "tutorial", "how to", "step by step"
+- For articles: add terms like "guide", "instructions", "tips"
+- Avoid overly broad terms that could match unrelated projects
+- Focus on the specific task or goal, not just general DIY`
+          },
+          {
+            role: 'user',
+            content: `Optimize a search query for this request.`
+          }
+        ],
+        functions: [
+          {
+            name: 'optimize_search_query',
+            description: 'Generate an optimized search query for Exa.ai',
+            parameters: {
+              type: 'object',
+              properties: {
+                optimizedQuery: {
+                  type: 'string',
+                  description: 'The optimized search query for Exa.ai'
+                },
+                searchTerms: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Key search terms used in the query'
+                },
+                reasoning: {
+                  type: 'string',
+                  description: 'Explanation of why this query will find relevant results'
+                }
+              },
+              required: ['optimizedQuery', 'searchTerms', 'reasoning']
+            }
+          }
+        ],
+        function_call: { name: 'optimize_search_query' }
+      });
+
+      const functionCall = response.choices[0].message.function_call;
+      if (!functionCall) {
+        return {
+          optimizedQuery: userMessage,
+          searchTerms: [userMessage],
+          reasoning: 'Fallback: using original user message'
+        };
+      }
+
+      const result = JSON.parse(functionCall.arguments);
+      console.log(`[OpenAI] Optimized search query: "${result.optimizedQuery}"`);
+      console.log(`[OpenAI] Reasoning: ${result.reasoning}`);
+
+      return result;
+    } catch (error) {
+      console.error('Search query optimization error:', error);
+      return {
+        optimizedQuery: userMessage,
+        searchTerms: [userMessage],
+        reasoning: 'Error during optimization, using original message'
+      };
+    }
+  }
+
   static async assessProjectContext(project: any, chatHistory: any[]): Promise<{
     needsMoreInfo: boolean;
     missingAreas: string[];
@@ -126,6 +221,7 @@ Assess the project context quality and identify missing information that would h
   static async classifyIntent(message: string, projectContext: any, chatHistory: any[]): Promise<{
     intent: 'search_resources' | 'general_guidance' | 'summarize_webpage' | 'add_resources' | 'project_planning' | 'off_topic';
     resourceType?: 'tutorial' | 'inspiration' | 'materials';
+    contentType?: 'video' | 'visual' | 'article' | 'mixed';
     needsWebSearch: boolean;
     specificQuery?: string;
     confidence: number;
@@ -152,8 +248,15 @@ Classify the intent as one of:
 
 For search_resources, also determine:
 - resourceType: tutorial, inspiration, or materials
+- contentType: video, visual, article, or mixed based on what the user seems to want
 - specificQuery: the exact search query to use
 - needsWebSearch: true if real web search is needed
+
+Content type guidelines:
+- 'video': User wants video tutorials, demonstrations, or how-to videos
+- 'visual': User wants images, photos, galleries, visual inspiration, or examples
+- 'article': User wants written guides, blog posts, or detailed instructions
+- 'mixed': User wants a variety of content types or didn't specify
 
 IMPORTANT: If the user is asking about something completely unrelated to DIY projects or their current project context, classify as 'off_topic'.
 
@@ -179,6 +282,11 @@ Return high confidence (0.8+) only when intent is very clear.`
                   type: 'string',
                   enum: ['tutorial', 'inspiration', 'materials'],
                   description: 'Type of resource being requested (if applicable)'
+                },
+                contentType: {
+                  type: 'string',
+                  enum: ['video', 'visual', 'article', 'mixed'],
+                  description: 'Type of content the user seems to want'
                 },
                 needsWebSearch: {
                   type: 'boolean',
@@ -365,10 +473,21 @@ NOTE: This project doesn't have detailed context information yet. Provide genera
 
       if (intentClassification.intent === 'search_resources' && intentClassification.needsWebSearch) {
         systemPrompt += `
-CRITICAL: The user is requesting ${intentClassification.resourceType} resources. 
+CRITICAL: The user is requesting ${intentClassification.resourceType} resources (${intentClassification.contentType || 'mixed'} content). 
 Search Query: "${intentClassification.specificQuery || message}"
 You MUST use the searchWebForResources function to find real resources.
-NEVER provide plain text lists - always return interactive resource cards.
+
+RESPONSE FORMATTING:
+- Start with a friendly, conversational introduction
+- DO NOT include any URLs or links in your response text
+- DO NOT list the search results in your message
+- Focus on explaining what types of resources were found and why they're helpful
+- Describe the content categories (videos, galleries, articles) without listing specific titles
+- Mention how these results relate to their specific project
+- End with a helpful follow-up suggestion or question
+- Be encouraging and supportive in tone
+
+CRITICAL: The search results will be displayed as interactive cards separately. Your message should only provide context and encouragement, NOT list the actual results.
 `;
       } else if (intentClassification.intent === 'summarize_webpage') {
         systemPrompt += `
@@ -481,6 +600,11 @@ Always be encouraging and practical. Focus on safety and best practices for DIY 
                 type: 'string',
                 enum: ['tutorial', 'inspiration', 'materials'],
                 description: 'Type of content to search for'
+              },
+              contentType: {
+                type: 'string',
+                enum: ['video', 'visual', 'article', 'mixed'],
+                description: 'Specific type of content format desired'
               },
               numResults: {
                 type: 'number',
@@ -610,7 +734,7 @@ Always be encouraging and practical. Focus on safety and best practices for DIY 
               functionResult = await this.handleGenerateChecklist(projectId, call.arguments);
               break;
             case 'searchWebForResources':
-              functionResult = await this.handleWebSearch(projectId, call.arguments);
+              functionResult = await this.handleWebSearch(projectId, call.arguments, intentClassification);
               break;
             case 'summarizeWebpage':
               functionResult = await this.handleWebpageSummarization(projectId, call.arguments);
@@ -648,28 +772,29 @@ Always be encouraging and practical. Focus on safety and best practices for DIY 
         try {
           const query = intentClassification.specificQuery || message;
           const resourceType = intentClassification.resourceType || 'inspiration';
+          const contentType = intentClassification.contentType || 'mixed';
           const functionResult = await this.handleWebSearch(projectId, {
             query,
             resourceType,
             numResults: 3,
-          });
+          }, intentClassification);
 
           if (functionResult?.success && functionResult.links?.length) {
-            const lines: string[] = [];
-            lines.push(`Here are some curated ${resourceType} resources for "${query}":`);
-            lines.push('');
-            functionResult.links.forEach((r: any, idx: number) => {
-              const source = r.source ? ` • ${r.source}` : '';
-              const difficulty = r.difficulty ? ` • ${r.difficulty}` : '';
-              lines.push(`${idx + 1}. ${r.title}${source}${difficulty}`);
-              if (r.url) lines.push(`${r.url}`);
-              if (r.snippet) lines.push(`${r.snippet}`);
-              lines.push('');
-            });
-            if (functionResult.searchSuggestion) {
-              lines.push(functionResult.searchSuggestion);
-            }
-            assistantText = lines.join('\n');
+            // Generate a contextual response without listing the actual results
+            const contentTypeDesc = resourceType === 'inspiration' && contentType === 'visual' 
+              ? 'visual inspiration and photo galleries' 
+              : resourceType === 'tutorial' 
+              ? 'step-by-step tutorials and guides'
+              : resourceType === 'materials'
+              ? 'materials and tools recommendations'
+              : 'helpful resources';
+
+            assistantText = `Great! I found some excellent ${contentTypeDesc} for your ${query} project. ` +
+              `The search results include ${functionResult.links.length} carefully selected resources ` +
+              `that should give you the inspiration and guidance you need. ` +
+              `These results are specifically tailored to your project context and should provide ` +
+              `exactly what you're looking for. Take a look at the options below and let me know ` +
+              `if you'd like me to find anything more specific!`;
 
             aggregatedFunctionCalls.push({
               name: 'searchWebForResources',
@@ -718,10 +843,21 @@ Always be encouraging and practical. Focus on safety and best practices for DIY 
           data: { functionCall: fc },
         });
 
+        // Determine response type and add metadata
+        const responseType = fc.name === 'searchWebForResources' ? 'search_results' : 'function_call';
+        
         const result = {
           message: assistantText,
           threadId: currentThread.id,
           functionCall: fc,
+          responseType,
+          metadata: {
+            hasSearchResults: fc.name === 'searchWebForResources' && fc.result?.success,
+            searchResultsCount: fc.name === 'searchWebForResources' ? fc.result?.links?.length || 0 : 0,
+            contentType: intentClassification?.contentType || 'mixed',
+            resourceType: intentClassification?.resourceType,
+            queryOptimization: fc.result?.queryOptimization
+          }
         };
         console.log(`[OpenAI] Final response with function call:`, result);
         return result;
@@ -730,6 +866,11 @@ Always be encouraging and practical. Focus on safety and best practices for DIY 
       return {
         message: assistantText,
         threadId: currentThread.id,
+        responseType: 'conversation',
+        metadata: {
+          hasSearchResults: false,
+          searchResultsCount: 0
+        }
       };
     } catch (error) {
       console.error('OpenAI chat error:', error);
@@ -781,110 +922,100 @@ Always be encouraging and practical. Focus on safety and best practices for DIY 
     }
   }
 
-  private static async handleWebSearch(projectId: string, args: any) {
+  private static async handleWebSearch(projectId: string, args: any, intentClassification?: any) {
     try {
       const { query, resourceType, numResults = 3 } = args;
 
-      console.log(`[OpenAI] Performing curated resource search: "${query}" (${resourceType})`);
+      console.log(`[OpenAI] Initiating Exa.ai web search: "${query}" (${resourceType})`);
 
-      // Since OpenAI doesn't have real web search, provide curated DIY resources
-      // Use AI to match query to appropriate curated resources
-      const curationResponse = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a DIY resource curator. Based on the search query, recommend real, verified DIY resources from trusted platforms.
-            
-            For each recommendation, provide:
-            - A descriptive title based on the query
-            - Real working URLs from trusted DIY platforms (YouTube, Home Depot, Lowe's, This Old House, Family Handyman, etc.)
-            - Accurate platform information
-            - Realistic difficulty assessment
-            - Relevant tags
-            - Helpful description
-            
-            IMPORTANT: Only suggest resources from well-known, established DIY platforms that are likely to exist.`
-          },
-          {
-            role: 'user',
-            content: `Find ${numResults} ${resourceType} resources for: "${query}"`
-          }
-        ],
-        functions: [
-          {
-            name: 'curate_diy_resources',
-            description: 'Return curated DIY resources from trusted platforms',
-            parameters: {
-              type: 'object',
-              properties: {
-                resources: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      title: { type: 'string', description: 'Descriptive title for the resource' },
-                      url: { type: 'string', description: 'URL from a trusted DIY platform' },
-                      source: { type: 'string', description: 'Platform name (YouTube, Home Depot, etc.)' },
-                      difficulty: { type: 'string', enum: ['Beginner', 'Intermediate', 'Advanced'] },
-                      tags: { type: 'array', items: { type: 'string' }, description: 'Relevant tags' },
-                      snippet: { type: 'string', description: 'Description of what this resource offers' }
-                    },
-                    required: ['title', 'url', 'source', 'difficulty', 'snippet']
-                  }
-                },
-                searchTerm: { type: 'string', description: 'Suggested search term for finding similar resources' }
-              },
-              required: ['resources', 'searchTerm']
-            }
-          }
-        ],
-        function_call: { name: 'curate_diy_resources' }
+      // Get project context for personalized search
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        include: {
+          materials: true,
+          checklistItems: true,
+          notes: true,
+        },
       });
 
-      const functionCall = curationResponse.choices[0].message.function_call;
-      if (!functionCall) {
+      if (!project) {
         return {
           success: false,
-          message: 'Resource curation is not available at the moment. Please try a more specific search.',
+          message: 'Project not found',
           links: []
         };
       }
 
-      const curationResults = JSON.parse(functionCall.arguments);
+      // Get content type from intent classification
+      const contentType: 'video' | 'visual' | 'article' | 'mixed' = 
+        intentClassification?.contentType || 'mixed';
 
-      if (!curationResults.resources || curationResults.resources.length === 0) {
-        return {
-          success: false,
-          message: `I couldn't find specific resources for "${query}". Try searching for "${curationResults.searchTerm || query}" on YouTube, Home Depot, or other DIY websites.`,
-          links: []
-        };
+      // Optimize search query using OpenAI with full project context
+      console.log(`[OpenAI] Optimizing search query for project: ${project.title}`);
+      const queryOptimization = await this.optimizeSearchQuery(
+        query,
+        resourceType,
+        contentType,
+        project
+      );
+
+      // Build project context for Exa search
+      const projectContext = {
+        title: project.title,
+        goal: project.goal || undefined,
+        description: project.description || undefined,
+        materials: project.materials.map(m => m.name),
+        focusAreas: project.interviewContext ? 
+          (project.interviewContext as any).focusAreas || [] : []
+      };
+
+      // Use Exa.ai for actual web search with optimized query
+      const { ExaService } = await import('./exa');
+      const searchResult = await ExaService.searchDIYResources({
+        query: queryOptimization.optimizedQuery,
+        resourceType,
+        numResults,
+        projectContext,
+        contentType
+      });
+
+      if (!searchResult.success) {
+        return searchResult;
       }
 
-      // Process the curated results
-      const processedResults = curationResults.resources.map((resource: any) => ({
+      // Process results for OpenAI response format compatibility
+      const processedResults = searchResult.links.map((resource: any) => ({
         title: resource.title,
         url: resource.url,
         source: resource.source,
         difficulty: resource.difficulty,
         tags: resource.tags || [],
         snippet: resource.snippet,
-        isYouTube: resource.source.toLowerCase().includes('youtube'),
-        videoId: resource.source.toLowerCase().includes('youtube') ? this.extractYouTubeId(resource.url) : undefined
+        isYouTube: resource.isYouTube,
+        videoId: resource.videoId,
+        score: resource.score,
+        publishedDate: resource.publishedDate
       }));
 
       return {
         success: true,
-        message: `Found ${processedResults.length} curated ${resourceType} resources for "${query}". These are from trusted DIY platforms.`,
+        message: `Found ${processedResults.length} personalized ${resourceType} resources for "${query}" using Exa.ai search.`,
         links: processedResults,
-        searchSuggestion: `For more resources, try searching "${curationResults.searchTerm}" on YouTube or DIY websites.`
+        searchSuggestion: searchResult.searchSuggestion,
+        queryOptimization: {
+          originalQuery: query,
+          optimizedQuery: queryOptimization.optimizedQuery,
+          reasoning: queryOptimization.reasoning
+        }
       };
 
     } catch (error) {
-      console.error('Resource curation error:', error);
+      console.error('Exa.ai web search error:', error);
+      
+      // Fallback to basic error response
       return {
         success: false,
-        message: 'Resource curation is temporarily unavailable. Try searching directly on YouTube, Home Depot, or other DIY websites.',
+        message: 'Web search is temporarily unavailable. Try searching directly on YouTube, Home Depot, or other DIY websites.',
         links: []
       };
     }

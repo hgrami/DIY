@@ -129,6 +129,9 @@ class ApiService {
         data = responseText ? JSON.parse(responseText) : { success: true, data: null };
       } catch (parseError) {
         console.error(`[ApiService] JSON parse error for ${endpoint}:`, parseError);
+        console.error(`[ApiService] Response text (first 500 chars):`, responseText.substring(0, 500));
+        console.error(`[ApiService] Response status:`, response.status);
+        console.error(`[ApiService] Response headers:`, response.headers);
         data = { success: false, error: 'Invalid response format' };
       }
 

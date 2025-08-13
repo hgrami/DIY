@@ -18,4 +18,8 @@ router.get('/projects/:shortId/ai-threads/active', AIController.getActiveThread)
 router.get('/projects/:shortId/ai-threads/:threadId', AIController.getChatThread);
 router.delete('/projects/:shortId/ai-threads/:threadId', AIController.deleteChatThread);
 
+// AI search routes
+router.post('/search', AIController.search);
+router.get('/performance-metrics', AIController.getPerformanceMetrics);
+
 export default router;

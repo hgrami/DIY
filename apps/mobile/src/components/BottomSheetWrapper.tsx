@@ -48,11 +48,14 @@ export const BottomSheetWrapper = forwardRef<BottomSheetModal, BottomSheetWrappe
 
     // Handle visibility changes
     useEffect(() => {
+      console.log('BottomSheetWrapper visibility changed:', isVisible);
       if (typeof bottomSheetRef === 'function') return;
 
       if (isVisible) {
+        console.log('Presenting BottomSheet');
         bottomSheetRef?.current?.present();
       } else {
+        console.log('Dismissing BottomSheet');
         bottomSheetRef?.current?.dismiss();
       }
     }, [isVisible, bottomSheetRef]);

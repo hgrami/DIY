@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important Development Environment Notes
+
+**CRITICAL**: Always assume that the server (backend) and the mobile app (Expo) are running outside of Claude Code. Do not attempt to start, stop, or restart these services unless explicitly requested by the user.
+
+**Network Configuration**: Trust the URLs configured in `.env` files. The development environment uses custom network configurations including DNS modifications and VPNs. Do not modify API URLs or assume localhost connections without explicit user instruction.
+
 ## Development Commands
 
 ### Root Commands (Turbo Monorepo)
@@ -124,6 +130,8 @@ PostgreSQL runs on port 5492 via Docker Compose (compose.yml). Connection string
 - `STRIPE_SECRET_KEY`: Stripe API secret
 - `STRIPE_WEBHOOK_SECRET`: Webhook signature verification
 - `FRONTEND_URL`: CORS origin configuration
+- `OPENAI_API_KEY`: OpenAI API key for reasoning and content generation
+- `EXA_API_KEY`: Exa.ai API key for personalized web search capabilities
 - `PORT`: Server port (default 3001)
 
 #### Mobile (.env)

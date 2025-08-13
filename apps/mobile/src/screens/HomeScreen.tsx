@@ -6,17 +6,23 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Alert,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthContext } from '../context/AuthContext';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { UserDropdown } from '../components/UserDropdown';
+import { GlassMenuButton } from '../components/GlassUI';
+import { UserMenuContent } from '../components/UserMenu/UserMenuContent';
 import { useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import type { AuthenticatedStackParamList } from '../@types';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { ProgressiveSearchModal } from '../components/Search';
+import { DIYSearchResult } from '../services/searchService';
 
 type HomeScreenNavigationProp = DrawerNavigationProp<AuthenticatedStackParamList, 'Home'>;
 
@@ -24,6 +30,8 @@ export const HomeScreen: React.FC = () => {
   const { user, logout } = useAuthContext();
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [glassMenuOpen, setGlassMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -38,12 +46,73 @@ export const HomeScreen: React.FC = () => {
     navigation.openDrawer();
   };
 
-  const handleAvatarPress = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setDropdownVisible(true);
+
+  const handleSearchPress = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    console.log('Search button pressed, user subscription:', user?.subscriptionStatus);
+    console.log('Setting searchVisible to true');
+    
+    // For testing - let's see what the user subscription status is
+    console.log('User object:', user);
+    console.log('User subscription status:', user?.subscriptionStatus);
+    
+    // Temporarily allow all users to test API
+    // if (user?.subscriptionStatus === 'FREE') {
+    //   Alert.alert(
+    //     'Premium Feature',
+    //     'Search is only available for Premium users. Upgrade your plan to access search functionality.',
+    //     [
+    //       { text: 'Cancel', style: 'cancel' },
+    //       { 
+    //         text: 'Upgrade', 
+    //         onPress: () => navigation.navigate('Subscription')
+    //       }
+    //     ]
+    //   );
+    //   return;
+    // }
+    
+    setSearchVisible(true);
+    console.log('Search modal should now be visible');
+  };
+
+  const handleSearchResultSelect = async (result: DIYSearchResult) => {
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      
+      Alert.alert(
+        'Open Resource',
+        `Open "${result.title}" in your browser?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open',
+            onPress: async () => {
+              try {
+                const canOpen = await Linking.canOpenURL(result.url);
+                if (canOpen) {
+                  await Linking.openURL(result.url);
+                } else {
+                  Alert.alert('Error', 'Cannot open this link');
+                }
+              } catch (error) {
+                console.error('Failed to open URL:', error);
+                Alert.alert('Error', 'Failed to open link');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Failed to handle search result:', error);
+    }
+    
+    setSearchVisible(false);
   };
 
   return (
+    <>
     <LinearGradient
       colors={['#667eea', '#764ba2']}
       style={styles.container}
@@ -59,14 +128,22 @@ export const HomeScreen: React.FC = () => {
           <Feather name="menu" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.avatar}
-          onPress={handleAvatarPress}
-        >
-          <Text style={styles.avatarText}>
-            {user?.email?.charAt(0).toUpperCase() || 'U'}
-          </Text>
-        </TouchableOpacity>
+        <GlassMenuButton
+          text={user?.email?.charAt(0).toUpperCase() || 'U'}
+          popoverPosition="bottom-left"
+          popoverWidth={320}
+          popoverHeight={240}
+          onOpenChange={setGlassMenuOpen}
+          renderPopover={() => (
+            <UserMenuContent
+              user={user}
+              onSettingsPress={() => navigation.navigate('Settings')}
+              onSubscriptionPress={() => navigation.navigate('Subscription')}
+              onLogout={handleLogout}
+              onClose={() => setGlassMenuOpen(false)}
+            />
+          )}
+        />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -86,14 +163,19 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionButtons}>
             <Button
+              title="Search DIY Resources"
+              onPress={handleSearchPress}
+              variant="primary"
+            />
+            <Button
               title="My Projects"
               onPress={() => navigation.navigate('Projects' as any)}
               variant="outline"
             />
             <Button
               title="Upgrade Plan"
-              onPress={() => {/* Navigate to subscription */ }}
-              variant="primary"
+              onPress={() => navigation.navigate('Subscription')}
+              variant="secondary"
               size="medium"
               style={styles.actionButton}
             />
@@ -207,16 +289,32 @@ export const HomeScreen: React.FC = () => {
         </Card>
       </ScrollView>
 
-      {/* User Dropdown */}
-      <UserDropdown
-        user={user}
-        isVisible={dropdownVisible}
-        onClose={() => setDropdownVisible(false)}
-        onSettingsPress={() => navigation.navigate('Settings')}
-        onSubscriptionPress={() => navigation.navigate('Subscription')}
-        onLogout={handleLogout}
-      />
+      {/* Legacy User Dropdown - Keep for backward compatibility but hidden when glass menu is active */}
+      {!glassMenuOpen && (
+        <UserDropdown
+          user={user}
+          isVisible={dropdownVisible}
+          onClose={() => setDropdownVisible(false)}
+          onSettingsPress={() => navigation.navigate('Settings')}
+          onSubscriptionPress={() => navigation.navigate('Subscription')}
+          onLogout={handleLogout}
+        />
+      )}
     </LinearGradient>
+    
+    {/* Search Modal - outside LinearGradient */}
+    <ProgressiveSearchModal
+      isVisible={searchVisible}
+      onClose={() => setSearchVisible(false)}
+      onResultSelect={handleSearchResultSelect}
+      onProjectCreated={(projectShortId) => {
+        console.log('New project created:', projectShortId);
+        setSearchVisible(false);
+      }}
+      initialQuery=""
+      initialResourceType="tutorial"
+    />
+  </>
   );
 };
 
@@ -234,19 +332,6 @@ const styles = StyleSheet.create({
   },
   hamburgerButton: {
     padding: 8,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
   content: {
     flex: 1,
