@@ -1,6 +1,7 @@
 import React, { useState, useRef, forwardRef, useImperativeHandle } from "react";
 import { Keyboard, ScrollView, Text, TextInput, View, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
-import { CustomBottomSheet } from "../CustomBottomSheet";
+import { NativeModal } from "../NativeModal";
+import { Button } from '../Button';
 
 interface PromoCodeModalProps {
     isVisible: boolean;
@@ -43,37 +44,37 @@ export const PromoCodeModal = forwardRef<PromoCodeModalRef, PromoCodeModalProps>
 
         const footer = (
             <View style={styles.footerRow}>
-                <TouchableOpacity
-                    style={[styles.bottomSheetButton, styles.bottomSheetCancelButton]}
+                <Button
+                    title="Cancel"
                     onPress={handleClose}
+                    variant="outline"
                     disabled={redeemingPromo}
-                >
-                    <Text style={styles.bottomSheetCancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.bottomSheetButton, styles.redeemSubmitButton]}
+                    style={{ flex: 1 }}
+                />
+                <Button
+                    title="Redeem"
                     onPress={handlePromoCodeSubmit}
+                    variant="primary"
                     disabled={redeemingPromo || !promoCode.trim()}
-                >
-                    {redeemingPromo ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                        <Text style={styles.redeemSubmitButtonText}>Redeem</Text>
-                    )}
-                </TouchableOpacity>
+                    loading={redeemingPromo}
+                    style={{ flex: 1 }}
+                />
             </View>
         );
 
         return (
-            <CustomBottomSheet
-                visible={isVisible}
+            <NativeModal
+                isVisible={isVisible}
                 onClose={handleClose}
                 title="Redeem Promo Code"
-                description="Enter your promo code to unlock premium features or lifetime access."
-                snapPoints={["55%", "75%", "90%"]}
-                footer={footer}
+                size="medium"
+                allowSwipeToClose={!redeemingPromo}
+                footerComponent={footer}
             >
+                <View style={styles.container}>
+                    <Text style={styles.description}>
+                        Enter your promo code to unlock premium features or lifetime access.
+                    </Text>
                 <TextInput
                     ref={promoInputRef}
                     style={styles.promoInput}
@@ -91,12 +92,23 @@ export const PromoCodeModal = forwardRef<PromoCodeModalRef, PromoCodeModalProps>
                     }}
                     editable={!redeemingPromo}
                 />
-            </CustomBottomSheet>
+                </View>
+            </NativeModal>
         );
     }
 );
 
 const styles = StyleSheet.create({
+    container: {
+        paddingTop: 8,
+    },
+    description: {
+        fontSize: 15,
+        color: 'rgba(255, 255, 255, 0.8)',
+        textAlign: 'center',
+        marginBottom: 24,
+        lineHeight: 22,
+    },
     promoInput: {
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
@@ -113,31 +125,5 @@ const styles = StyleSheet.create({
     footerRow: {
         flexDirection: 'row',
         gap: 12,
-    },
-    bottomSheetButton: {
-        flex: 1,
-        paddingVertical: 14,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 48,
-    },
-    bottomSheetCancelButton: {
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(239, 68, 68, 0.3)',
-    },
-    bottomSheetCancelButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#EF4444',
-    },
-    redeemSubmitButton: {
-        backgroundColor: '#6366F1',
-    },
-    redeemSubmitButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#FFFFFF',
     },
 });

@@ -20,7 +20,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { BottomSheetModal, BottomSheetView, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { NativeModal } from '../NativeModal';
 
 import { SearchService, DIYSearchResult, SearchOptions } from '../../services/searchService';
 import { Project } from '../../@types';
@@ -56,7 +56,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   const [showFilters, setShowFilters] = useState(false);
   const [searchMessage, setSearchMessage] = useState<string>('');
 
-  const bottomSheetRef = useRef<BottomSheetModal>(null);
   const inputRef = useRef<TextInput>(null);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -64,13 +63,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   const searchProgress = useSharedValue(0);
   const resultsOpacity = useSharedValue(0);
 
-  // Present/dismiss bottom sheet based on visibility
+  // Auto-focus input when modal opens
   useEffect(() => {
     if (isVisible) {
-      bottomSheetRef.current?.present();
       setTimeout(() => inputRef.current?.focus(), 500);
-    } else {
-      bottomSheetRef.current?.dismiss();
     }
   }, [isVisible]);
 
@@ -178,32 +174,21 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   const suggestions = project ? SearchService.getSearchSuggestions(project) : [];
 
   return (
-    <BottomSheetModal
-      ref={bottomSheetRef}
-      index={0}
-      snapPoints={['90%']}
-      onDismiss={handleClose}
-      backgroundStyle={styles.bottomSheetBackground}
-      handleIndicatorStyle={styles.bottomSheetIndicator}
-      enablePanDownToClose={true}
-      keyboardBehavior="interactive"
-      keyboardBlurBehavior="restore"
-    >
-      <BottomSheetView style={styles.container}>
-        {/* Header */}
+    <NativeModal
+      isVisible={isVisible}
+      onClose={handleClose}
+      title="Search DIY Resources"
+      size="full"
+      allowSwipeToClose={true}
+      headerComponent={
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <Feather name="search" size={24} color="#FFFFFF" />
             <Text style={styles.title}>Search DIY Resources</Text>
           </View>
-          <TouchableOpacity
-            onPress={handleClose}
-            style={styles.closeButton}
-            hitSlop={{ top: 10, left: 10, right: 10, bottom: 10 }}
-          >
-            <Feather name="x" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
         </View>
+      }
+    >
 
         {/* Search Input */}
         <View style={styles.searchContainer}>
@@ -248,11 +233,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
         />
 
         {/* Content */}
-        <BottomSheetScrollView 
-          style={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.content}>
           {/* Search Suggestions */}
           {query.length === 0 && suggestions.length > 0 && (
             <SearchSuggestions
@@ -305,22 +286,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({
               </View>
             </View>
           )}
-        </BottomSheetScrollView>
-      </BottomSheetView>
-    </BottomSheetModal>
+        </View>
+    </NativeModal>
   );
 };
 
 const styles = StyleSheet.create({
-  bottomSheetBackground: {
-    backgroundColor: 'rgba(30, 30, 46, 0.95)',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
-  bottomSheetIndicator: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    width: 40,
-  },
   container: {
     flex: 1,
     paddingHorizontal: 20,
@@ -341,9 +312,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-  closeButton: {
-    padding: 4,
   },
   searchContainer: {
     marginBottom: 16,

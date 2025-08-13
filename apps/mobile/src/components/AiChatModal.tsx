@@ -13,7 +13,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { CustomBottomSheet } from './CustomBottomSheet';
+import { NativeModal } from './NativeModal';
 import { Project, AiChatMessage } from '../@types';
 import { useAuthContext } from '../context/AuthContext';
 import { apiService } from '../services/api';
@@ -421,16 +421,15 @@ export const AiChatModal: React.FC<AiChatModalProps> = ({
 
   return (
     <>
-      <CustomBottomSheet
-        visible={visible}
+      <NativeModal
+        isVisible={visible}
         onClose={onClose}
         title="AI Project Assistant"
-        description={`Get help with "${project.title}"`}
-        snapPoints={['25%', '60%', '90%']}
-        initialSnapIndex={1}
-        footer={renderChatInput()}
-        contentContainerStyle={{ flex: 1 }}
-        disableScrollView={messages.length > 0}
+        size="full"
+        allowSwipeToClose={true}
+        footerComponent={renderChatInput()}
+        disableScrollView={true}
+        showCloseButton={true}
       >
         {messages.length === 0 ? (
           <View style={styles.chatContainer}>
@@ -464,7 +463,7 @@ export const AiChatModal: React.FC<AiChatModalProps> = ({
             />
           </View>
         )}
-      </CustomBottomSheet>
+      </NativeModal>
 
 
     </>
@@ -472,6 +471,22 @@ export const AiChatModal: React.FC<AiChatModalProps> = ({
 };
 
 const styles = StyleSheet.create({
+  customHeader: {
+    alignItems: 'center',
+    paddingBottom: 4,
+  },
+  customHeaderTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  customHeaderSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginTop: 2,
+  },
   chatContainer: {
     flex: 1,
     minHeight: 200,

@@ -64,50 +64,57 @@ export const NativeModal: React.FC<NativeModalProps> = ({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const insets = useSafeAreaInsets();
 
-  // Calculate available space and modal height based on size variant
-  const availableSpace = SCREEN_HEIGHT - keyboardHeight;
-  const getModalHeight = useMemo(() => {
-    const statusBarHeight = insets.top || 0;
-    const maxHeight = availableSpace - statusBarHeight;
-    
+  // Base and target heights: prefer stable height, shrink only as needed for keyboard
+  const statusBarHeight = insets.top || 0;
+  const baseMaxHeight = SCREEN_HEIGHT - statusBarHeight; // ignore keyboard for preferred size
+  const preferredHeight = useMemo(() => {
     switch (size) {
       case 'small':
-        return Math.min(maxHeight * 0.25, maxHeight); // 25% of screen
+        return baseMaxHeight * 0.25;
       case 'medium':
-        return Math.min(maxHeight * 0.5, maxHeight); // 50% of screen
+        return baseMaxHeight * 0.5;
       case 'full':
       default:
-        return maxHeight; // Full available space
+        return baseMaxHeight;
     }
-  }, [availableSpace, insets.top, size]);
-  
-  const modalHeight = getModalHeight;
+  }, [baseMaxHeight, size]);
+
+  const maxHeightWithKeyboard = baseMaxHeight - keyboardHeight; // max possible while sitting above keyboard
+  const targetHeight = useMemo(() => {
+    // Keep roughly same size, but never exceed available space
+    const height = Math.min(preferredHeight, maxHeightWithKeyboard);
+    return Math.max(56, height); // enforce a minimal sensible height
+  }, [preferredHeight, maxHeightWithKeyboard]);
+
+  // Animated shared values for smooth size/position transitions
+  const animatedHeight = useSharedValue(targetHeight);
+  const bottomOffset = useSharedValue(0);
 
   // Spring animation helper
   const springTo = useCallback((to: number) => {
-    sheetY.value = withSpring(to, { 
-      damping: 20, 
-      stiffness: 200, 
-      mass: 0.8 
+    sheetY.value = withSpring(to, {
+      damping: 20,
+      stiffness: 200,
+      mass: 0.8
     });
   }, [sheetY]);
 
   // Handle modal dismiss
   const handleDismiss = useCallback(() => {
     Keyboard.dismiss();
-    sheetY.value = withTiming(SCREEN_HEIGHT, { duration: 300 });
+    sheetY.value = withTiming(targetHeight, { duration: 300 });
     setTimeout(onClose, 300);
-  }, [onClose, sheetY]);
+  }, [onClose, sheetY, targetHeight]);
 
   // Keyboard event listeners
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    
+
     const showSubscription = Keyboard.addListener(showEvent, (e) => {
       setKeyboardHeight(e.endCoordinates.height);
     });
-    
+
     const hideSubscription = Keyboard.addListener(hideEvent, () => {
       setKeyboardHeight(0);
     });
@@ -121,22 +128,25 @@ export const NativeModal: React.FC<NativeModalProps> = ({
   // Handle modal visibility changes
   useEffect(() => {
     if (isVisible) {
-      // For smaller modals, start from bottom of screen but only move up by modal height
-      const startPosition = size === 'full' ? modalHeight : SCREEN_HEIGHT;
-      sheetY.value = startPosition;
-      springTo(size === 'full' ? 0 : SCREEN_HEIGHT - modalHeight);
+      // Initialize to off-screen (by its own height), then spring into place
+      sheetY.value = targetHeight;
+      animatedHeight.value = withSpring(targetHeight);
+      bottomOffset.value = withTiming(keyboardHeight, { duration: 250 });
+      springTo(0);
     } else {
-      springTo(SCREEN_HEIGHT);
+      springTo(targetHeight);
     }
-  }, [isVisible, modalHeight, springTo, size]);
+  }, [isVisible, targetHeight, springTo, animatedHeight, bottomOffset, keyboardHeight, sheetY]);
 
   // Adjust position when keyboard changes
   useEffect(() => {
     if (isVisible) {
-      const targetPosition = size === 'full' ? 0 : SCREEN_HEIGHT - modalHeight;
-      springTo(targetPosition);
+      // Smoothly adjust both height and bottom offset when keyboard changes
+      animatedHeight.value = withSpring(targetHeight);
+      bottomOffset.value = withTiming(keyboardHeight, { duration: 250 });
+      springTo(0);
     }
-  }, [keyboardHeight, isVisible, springTo, size, modalHeight]);
+  }, [keyboardHeight, isVisible, springTo, targetHeight, animatedHeight, bottomOffset]);
 
   // Pan gesture for swipe to dismiss
   const panGesture = Gesture.Pan()
@@ -153,12 +163,12 @@ export const NativeModal: React.FC<NativeModalProps> = ({
     .onEnd((event) => {
       const translationY = event.translationY;
       const velocityY = event.velocityY;
-      
+
       // Adjust dismiss threshold based on modal size
       const dismissThreshold = size === 'small' ? 0.4 : size === 'medium' ? 0.35 : 0.3;
 
       // Determine if should dismiss or snap back
-      if (translationY > modalHeight * dismissThreshold || velocityY > 1000) {
+      if (translationY > targetHeight * dismissThreshold || velocityY > 1000) {
         runOnJS(handleDismiss)();
       } else {
         // Snap back to original position
@@ -170,10 +180,13 @@ export const NativeModal: React.FC<NativeModalProps> = ({
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ translateY: sheetY.value }],
-      height: modalHeight,
-      bottom: size === 'full' ? keyboardHeight : 0, // Full modals position above keyboard, others from bottom
+      height: animatedHeight.value,
+      bottom: bottomOffset.value,
     };
   });
+
+  const isKeyboardVisible = keyboardHeight > 0;
+  const bottomRadius = size !== 'full' && !isKeyboardVisible ? 28 : 0;
 
   // Handle backdrop press
   const handleBackdropPress = () => {
@@ -187,18 +200,16 @@ export const NativeModal: React.FC<NativeModalProps> = ({
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  if (!isVisible) return null;
-
   return (
     <Modal
-      visible
+      visible={isVisible}
       transparent
       animationType="none"
       statusBarTranslucent
       onRequestClose={handleDismiss}
     >
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
+
       {/* Backdrop */}
       <Pressable style={styles.backdrop} onPress={handleBackdropPress}>
         <View style={styles.backdropOverlay} />
@@ -206,9 +217,14 @@ export const NativeModal: React.FC<NativeModalProps> = ({
 
       {/* Modal Content */}
       <Animated.View style={[
-        styles.sheet, 
+        styles.sheet,
         size !== 'full' && styles.partialModal,
-        animatedStyle
+        animatedStyle,
+        // Override bottom radii when keyboard is visible
+        (isKeyboardVisible || size === 'full') && {
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
+        }
       ]}>
         {/* Primary Glass Background Blur */}
         <BlurView
@@ -216,7 +232,7 @@ export const NativeModal: React.FC<NativeModalProps> = ({
           tint={Platform.OS === 'ios' ? 'systemUltraThinMaterial' : 'dark'}
           style={StyleSheet.absoluteFill}
         />
-        
+
         {/* Secondary Blur Layer for Depth */}
         <BlurView
           intensity={Platform.OS === 'ios' ? 20 : 15}
@@ -226,7 +242,7 @@ export const NativeModal: React.FC<NativeModalProps> = ({
             { opacity: 0.6 }
           ]}
         />
-        
+
         {/* Base Glass Layer */}
         <View
           style={[
@@ -235,12 +251,12 @@ export const NativeModal: React.FC<NativeModalProps> = ({
               backgroundColor: 'rgba(28, 28, 30, 0.95)', // Darker, more solid background like Apple
               borderTopLeftRadius: 28,
               borderTopRightRadius: 28,
-              borderBottomLeftRadius: size !== 'full' ? 28 : 0,
-              borderBottomRightRadius: size !== 'full' ? 28 : 0,
+              borderBottomLeftRadius: bottomRadius,
+              borderBottomRightRadius: bottomRadius,
             },
           ]}
         />
-        
+
         {/* Inner Highlight */}
         <View
           style={[
@@ -248,17 +264,17 @@ export const NativeModal: React.FC<NativeModalProps> = ({
             {
               borderTopLeftRadius: 28,
               borderTopRightRadius: 28,
-              borderBottomLeftRadius: size !== 'full' ? 28 : 0,
-              borderBottomRightRadius: size !== 'full' ? 28 : 0,
+              borderBottomLeftRadius: bottomRadius,
+              borderBottomRightRadius: bottomRadius,
               borderWidth: 1.5,
               borderTopColor: 'rgba(255, 255, 255, 0.3)',
               borderLeftColor: 'rgba(255, 255, 255, 0.2)',
               borderRightColor: 'rgba(255, 255, 255, 0.2)',
-              borderBottomColor: size !== 'full' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+              borderBottomColor: size !== 'full' && !isKeyboardVisible ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
             },
           ]}
         />
-        
+
         {/* Outer Border */}
         <View
           style={[
@@ -266,13 +282,13 @@ export const NativeModal: React.FC<NativeModalProps> = ({
             {
               borderTopLeftRadius: 28,
               borderTopRightRadius: 28,
-              borderBottomLeftRadius: size !== 'full' ? 28 : 0,
-              borderBottomRightRadius: size !== 'full' ? 28 : 0,
+              borderBottomLeftRadius: bottomRadius,
+              borderBottomRightRadius: bottomRadius,
               borderWidth: StyleSheet.hairlineWidth,
               borderTopColor: 'rgba(255, 255, 255, 0.4)',
               borderLeftColor: 'rgba(255, 255, 255, 0.4)',
               borderRightColor: 'rgba(255, 255, 255, 0.4)',
-              borderBottomColor: size !== 'full' ? 'rgba(255, 255, 255, 0.4)' : 'transparent',
+              borderBottomColor: size !== 'full' && !isKeyboardVisible ? 'rgba(255, 255, 255, 0.4)' : 'transparent',
             },
           ]}
         />

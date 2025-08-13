@@ -15,7 +15,8 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { CustomBottomSheet } from '../CustomBottomSheet';
+import { NativeModal } from '../NativeModal';
+import { Button } from '../Button';
 
 interface Props {
   visible: boolean;
@@ -89,49 +90,34 @@ export const ChecklistActionModal: React.FC<Props> = ({
   }));
 
   const footer = (
-    <View style={styles.bottomSheetButtons}>
-      <TouchableOpacity
-        style={[styles.bottomSheetButton, styles.bottomSheetCancelButton]}
+    <View style={styles.buttonRow}>
+      <Button
+        title="Cancel"
         onPress={handleCancel}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.bottomSheetCancelButtonText}>Cancel</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[
-          styles.bottomSheetButton,
-          styles.submitButton,
-          !isValid && styles.disabledButton,
-        ]}
+        variant="outline"
+        style={{ flex: 1 }}
+      />
+      <Button
+        title={submitButtonText}
         onPress={handleSubmit}
-        activeOpacity={isValid ? 0.7 : 1}
+        variant="primary"
         disabled={!isValid}
-      >
-        <Text style={[
-          styles.submitButtonText,
-          !isValid && styles.disabledButtonText,
-        ]}>
-          {submitButtonText}
-        </Text>
-      </TouchableOpacity>
+        style={{ flex: 1 }}
+      />
     </View>
   );
 
   return (
-    <CustomBottomSheet
-      visible={visible}
+    <NativeModal
+      isVisible={visible}
       onClose={handleCancel}
       title={title}
-      snapPoints={["55%", "75%", "90%"]}
-      footer={footer}
+      size="small"
+      allowSwipeToClose={true}
+      footerComponent={footer}
+      disableScrollView={true}
     >
-      <ScrollView
-        style={styles.bottomSheetInnerContent}
-        contentContainerStyle={styles.bottomSheetScrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.container}>
         <Animated.View style={animatedInputStyle}>
           <TextInput
             ref={inputRef}
@@ -153,19 +139,15 @@ export const ChecklistActionModal: React.FC<Props> = ({
             selectionColor="rgba(76, 175, 80, 0.6)"
           />
         </Animated.View>
-      </ScrollView>
-    </CustomBottomSheet>
+      </View>
+    </NativeModal>
   );
 };
 
 const styles = StyleSheet.create({
-  bottomSheetInnerContent: { flex: 1 },
-  bottomSheetScrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 20,
-    flexGrow: 1,
-    justifyContent: 'flex-start',
+  container: {
+    paddingHorizontal: 8,
+    paddingTop: 8,
   },
   textInput: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -184,46 +166,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(244, 67, 54, 0.8)',
     backgroundColor: 'rgba(244, 67, 54, 0.1)',
   },
-  bottomSheetButtons: {
+  buttonRow: {
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    paddingTop: 12,
-  },
-  bottomSheetButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-  },
-  bottomSheetCancelButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-  },
-  bottomSheetCancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#EF4444',
-  },
-  submitButton: {
-    backgroundColor: 'rgba(76, 175, 80, 0.8)',
-    borderWidth: 1,
-    borderColor: 'rgba(76, 175, 80, 1)',
-  },
-  disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  disabledButtonText: {
-    color: 'rgba(255, 255, 255, 0.4)',
   },
 });

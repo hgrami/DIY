@@ -16,7 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { BottomSheetWrapper } from '../components/BottomSheetWrapper';
+import { NativeModal } from '../components/NativeModal';
 import { CreateProjectForm, CreateProjectButtons, CreateProjectFormRef } from '../components/CreateProjectForm';
 import { ProjectsService } from '../services/projectsService';
 import { useAuthContext } from '../context/AuthContext';
@@ -205,10 +205,11 @@ export const ProjectsScreen: React.FC = () => {
         )}
 
         {/* Create Project Bottom Sheet */}
-        <BottomSheetWrapper
+        <NativeModal
           isVisible={showCreateModal}
           onClose={() => setShowCreateModal(false)}
-          snapPoints={['80%']}
+          size="full"
+          allowSwipeToClose={!createLoading}
           title="Create New Project"
           footerComponent={
             <CreateProjectButtons
@@ -272,7 +273,7 @@ export const ProjectsScreen: React.FC = () => {
             formData={formData}
             setFormData={setFormData}
           />
-        </BottomSheetWrapper>
+        </NativeModal>
       </LinearGradient>
     </ScreenWithHeader>
   );

@@ -5,7 +5,8 @@ import { useAuthContext } from './AuthContext';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { CustomBottomSheet } from '../components/CustomBottomSheet';
+import { NativeModal } from '../components/NativeModal';
+import { Button } from '../components/Button';
 import { CreateProjectForm, CreateProjectFormRef } from '../components/CreateProjectForm';
 
 interface ProjectContextType {
@@ -190,15 +191,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <ProjectContext.Provider value={contextValue}>
       {children}
 
-      <CustomBottomSheet
-        visible={isCreateModalVisible}
+      <NativeModal
+        isVisible={isCreateModalVisible}
         onClose={closeCreateProjectModal}
         title="Create New Project"
-        snapPoints={snapPoints}
-        initialSnapIndex={1}
-        footer={(
-          <TouchableOpacity
-            style={[styles.footerPrimaryButton, (modalLoading || !formData.title.trim()) && styles.footerPrimaryButtonDisabled]}
+        size="medium"
+        allowSwipeToClose={!modalLoading}
+        footerComponent={
+          <Button
+            title={modalLoading ? 'Creating…' : 'Create Project'}
             onPress={async () => {
               if (!formData.title.trim()) {
                 Alert.alert('Validation Error', 'Project title is required');
@@ -238,10 +239,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
               }
             }}
             disabled={modalLoading || !formData.title.trim()}
-          >
-            <Text style={styles.footerPrimaryButtonText}>{modalLoading ? 'Creating…' : 'Create Project'}</Text>
-          </TouchableOpacity>
-        )}
+            loading={modalLoading}
+            variant="primary"
+          />
+        }
       >
         <CreateProjectForm
           ref={createProjectFormRef}
@@ -251,7 +252,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           formData={formData}
           setFormData={setFormData}
         />
-      </CustomBottomSheet>
+      </NativeModal>
     </ProjectContext.Provider>
   );
 };
