@@ -1,4 +1,5 @@
 export * from './checklists';
+export * from './projects';
 
 // User types
 export interface User {
@@ -84,6 +85,12 @@ export interface ApiResponse<T> {
     data?: T;
     error?: string;
     message?: string;
+    pagination?: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    };
 }
 
 // Navigation types
@@ -94,6 +101,8 @@ export type RootStackParamList = {
 
 export type AuthenticatedStackParamList = {
     Home: undefined;
+    Projects: undefined;
+    Project: { shortId: string };
     Settings: undefined;
     Subscription: undefined;
 };

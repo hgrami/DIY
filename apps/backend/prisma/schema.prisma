@@ -22,6 +22,7 @@ model User {
   subscriptions     Subscription[]
   promoCodeRedemptions PromoCodeRedemption[]
   checklists        Checklist[]
+  projects          Project[]
 
   @@map("users")
 }
@@ -102,14 +103,141 @@ model ChecklistItem {
   id          String   @id @default(cuid())
   title       String
   completed   Boolean  @default(false)
-  checklistId String
+  checklistId String?
+  projectId   String?  // Can belong to either a standalone checklist or a project
+  dueDate     DateTime?
+  createdBy   String?  // "user" | "ai"
+  order       Int?     // For ordering within project
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
-  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  checklist   Checklist? @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  project     Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("checklist_items")
+}
+
+// Mixtape DIY Project Models
+model Project {
+  id          String   @id @default(cuid())
+  shortId     String   @unique // Human-readable slug for URLs
+  userId      String
+  title       String
+  goal        String?
+  description String?
+  deadline    DateTime?
+  config      Json     @default("{}") // Feature toggles and settings
+  interviewContext Json? // Stores AI interview questions and answers for better context
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inspirationLinks InspirationLink[]
+  materials   MaterialItem[]
+  checklistItems ChecklistItem[]
+  notes       Note[]
+  photos      ProjectPhoto[]
+  aiChatHistory AiChatMessage[]
+  aiChatThreads AiChatThread[]
+
+  @@map("projects")
+}
+
+model InspirationLink {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  url         String
+  imageUrl    String?
+  source      String?  // e.g., "Pinterest", "YouTube", "Blog"
+  difficulty  String?  // e.g., "Beginner", "Intermediate", "Advanced"
+  tags        String[] // Array of tags
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("inspiration_links")
+}
+
+model MaterialItem {
+  id            String   @id @default(cuid())
+  projectId     String
+  name          String
+  quantity      String   // e.g., "2", "1 pack", "3 meters"
+  estimatedPrice Decimal? @db.Decimal(10, 2)
+  affiliateUrl  String?
+  checked       Boolean  @default(false)
+  thumbnail     String?  // Image URL
+  category      String?  // e.g., "Tools", "Materials", "Safety"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("material_items")
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  projectId String
+  content   String
+  tags      String[] // Array of tags
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("notes")
+}
+
+model ProjectPhoto {
+  id        String   @id @default(cuid())
+  projectId String
+  stage     String   // "before", "during", "after"
+  url       String
+  caption   String?
+  uploadedAt DateTime @default(now())
+
+  // Relations
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_photos")
+}
+
+model AiChatThread {
+  id        String   @id @default(cuid())
+  projectId String
+  title     String?  // Auto-generated from first message or user-defined
+  startedAt DateTime @default(now())
+  lastMessageAt DateTime @default(now())
+
+  // Relations
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages  AiChatMessage[]
+
+  @@map("ai_chat_threads")
+}
+
+model AiChatMessage {
+  id        String   @id @default(cuid())
+  projectId String
+  threadId  String?  // Optional for backward compatibility
+  role      String   // "user" | "assistant"
+  content   String
+  functionCall Json? // For storing function call results
+  createdAt DateTime @default(now())
+
+  // Relations
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  thread    AiChatThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@map("ai_chat_messages")
 }
 
 // Removed SubscriptionStatus enum - now using flexible strings

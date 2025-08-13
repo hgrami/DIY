@@ -137,10 +137,10 @@ class SecureStorageService {
   async validateStoredData(): Promise<boolean> {
     try {
       const userData = await this.getUserData();
-      return userData !== null && 
-             typeof userData.id === 'string' && 
-             typeof userData.email === 'string' &&
-             typeof userData.clerkId === 'string';
+      return userData !== null &&
+        typeof userData.id === 'string' &&
+        typeof userData.email === 'string' &&
+        typeof userData.clerkId === 'string';
     } catch (error) {
       console.error('Failed to validate stored data:', error);
       return false;
@@ -157,7 +157,6 @@ class SecureStorageService {
         await this.storeAuthToken(oldToken);
         // Remove from AsyncStorage
         await AsyncStorage.removeItem('auth_token');
-        console.log('Successfully migrated auth token to SecureStore');
       }
     } catch (error) {
       console.error('Failed to migrate data from AsyncStorage:', error);

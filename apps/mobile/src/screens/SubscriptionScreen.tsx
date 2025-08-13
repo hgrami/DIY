@@ -7,9 +7,6 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
-  TextInput,
-  Keyboard,
-  Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuthContext } from '../context/AuthContext';
@@ -17,9 +14,9 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { ScreenWithHeader } from '../components/ScreenWithHeader';
 import { NativePaymentSheet } from '../components/NativePaymentSheet';
-import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { apiService } from '../services/api';
 import { StripeProduct, Subscription, PromoCodeRedemptionResponse } from '../@types';
+import { PromoCodeModal, PromoCodeModalRef } from '../components/Subscriptions/PromoCodeModal';
 
 type BillingPeriod = 'month' | 'year';
 
@@ -37,38 +34,15 @@ export const SubscriptionScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('month');
   const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
-  const [promoCode, setPromoCode] = useState('');
+  const [showPromoModal, setShowPromoModal] = useState(false);
   const [redeemingPromo, setRedeemingPromo] = useState(false);
-  const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const promoInputRef = useRef<TextInput>(null);
+  const promoModalRef = useRef<PromoCodeModalRef>(null);
 
   useEffect(() => {
     fetchProducts();
     fetchCurrentSubscription();
   }, []);
 
-  // Keyboard listeners to properly manage keyboard and bottom sheet interaction
-  useEffect(() => {
-    const keyboardWillShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (event) => {
-        // With single snap point at 80%, ensure bottom sheet stays in position
-        bottomSheetRef.current?.snapToIndex(0);
-      }
-    );
-    const keyboardWillHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        // Keep the same position with single snap point
-        bottomSheetRef.current?.snapToIndex(0);
-      }
-    );
-
-    return () => {
-      keyboardWillShowListener.remove();
-      keyboardWillHideListener.remove();
-    };
-  }, []);
 
 
   const fetchCurrentSubscription = async () => {
@@ -112,7 +86,6 @@ export const SubscriptionScreen: React.FC = () => {
       const response = await apiService.get<StripeProduct[]>('/subscriptions/products');
 
       if (response.success && response.data) {
-        console.log('response.data', response.data);
         setProducts(response.data);
       }
     } catch (error) {
@@ -213,50 +186,41 @@ export const SubscriptionScreen: React.FC = () => {
   // Check if user has lifetime access
   const hasLifetimeAccess = () => {
     if (!currentSubscription) return false;
-    
+
     // Check for lifetime indicators
     // 1. No next billing date (lifetime doesn't need billing)
     // 2. Interval is "lifetime" 
     // 3. Very far future end date (more than 50 years from now)
     const now = new Date();
     const fiftyYearsFromNow = new Date(now.getFullYear() + 50, now.getMonth(), now.getDate());
-    
-    return !currentSubscription.nextBillingDate || 
-           currentSubscription.interval?.toLowerCase() === 'lifetime' ||
-           (currentSubscription.endDate && new Date(currentSubscription.endDate) > fiftyYearsFromNow);
+
+    return !currentSubscription.nextBillingDate ||
+      currentSubscription.interval?.toLowerCase() === 'lifetime' ||
+      (currentSubscription.endDate && new Date(currentSubscription.endDate) > fiftyYearsFromNow);
   };
 
   const handleRedeemCode = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    bottomSheetRef.current?.present();
+    setShowPromoModal(true);
     // Small delay to allow bottom sheet to animate before focusing
     setTimeout(() => {
-      promoInputRef.current?.focus();
-    }, 500);
+      promoModalRef.current?.focus();
+    }, 600);
   }, []);
 
-  const handlePromoCodeSubmit = async () => {
-    if (!promoCode.trim()) {
-      Alert.alert('Error', 'Please enter a promo code');
-      return;
-    }
-
-    // Dismiss keyboard first
-    Keyboard.dismiss();
-
+  const handlePromoCodeSubmit = async (code: string) => {
     try {
       setRedeemingPromo(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       const response = await apiService.post<PromoCodeRedemptionResponse>('/subscriptions/redeem-promo',
-        { code: promoCode.trim() }
+        { code: code.trim() }
       );
 
       if (response.success && response.data) {
         const { subscriptionType, isLifetime, expiresAt } = response.data;
 
-        bottomSheetRef.current?.dismiss();
-        setPromoCode('');
+        setShowPromoModal(false);
 
         const message = isLifetime
           ? `Congratulations! You now have ${subscriptionType} access forever!`
@@ -328,11 +292,11 @@ export const SubscriptionScreen: React.FC = () => {
             {currentSubscription ? (
               <View>
                 <Text style={styles.planDescription}>
-                  {hasLifetimeAccess() 
+                  {hasLifetimeAccess()
                     ? 'Lifetime Access - No billing required'
                     : currentSubscription.cancelAtPeriodEnd
-                    ? `Access until ${formatDate(currentSubscription.nextBillingDate || currentSubscription.endDate)}`
-                    : `Next billing: ${formatDate(currentSubscription.nextBillingDate || currentSubscription.endDate)}`
+                      ? `Access until ${formatDate(currentSubscription.nextBillingDate || currentSubscription.endDate)}`
+                      : `Next billing: ${formatDate(currentSubscription.nextBillingDate || currentSubscription.endDate)}`
                   }
                 </Text>
 
@@ -532,9 +496,7 @@ export const SubscriptionScreen: React.FC = () => {
                                 refreshUser()
                               ]);
                             }}
-                            onCancel={() => {
-                              console.log('Payment cancelled by user');
-                            }}
+                            onCancel={() => { }}
                             disabled={loading}
                             loading={loading}
                           />
@@ -553,93 +515,14 @@ export const SubscriptionScreen: React.FC = () => {
         </ScrollView>
       </View>
 
-      {/* Redeem Code Bottom Sheet */}
-      <BottomSheetModal
-        ref={bottomSheetRef}
-        snapPoints={['80%']}
-        enableDynamicSizing={false}
-        backgroundStyle={styles.bottomSheetBackground}
-        handleIndicatorStyle={styles.bottomSheetIndicator}
-        keyboardBehavior="extend"
-        keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustResize"
-        enablePanDownToClose={true}
-        enableDismissOnClose={true}
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop
-            {...props}
-            disappearsOnIndex={-1}
-            appearsOnIndex={0}
-            onPress={() => {
-              Keyboard.dismiss();
-              bottomSheetRef.current?.dismiss();
-              setPromoCode('');
-            }}
-          />
-        )}
-        onDismiss={() => {
-          setPromoCode('');
-          Keyboard.dismiss();
-        }}
-      >
-        <BottomSheetView style={styles.bottomSheetContent}>
-          <ScrollView
-            style={styles.bottomSheetInnerContent}
-            contentContainerStyle={styles.bottomSheetScrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={styles.bottomSheetTitle}>Redeem Promo Code</Text>
-            <Text style={styles.bottomSheetDescription}>
-              Enter your promo code to unlock premium features or lifetime access.
-            </Text>
-
-            <TextInput
-              ref={promoInputRef}
-              style={styles.promoInput}
-              value={promoCode}
-              onChangeText={setPromoCode}
-              placeholder="Enter promo code..."
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              autoCapitalize="characters"
-              autoCorrect={false}
-              autoFocus={false}
-              returnKeyType="done"
-              onSubmitEditing={() => {
-                Keyboard.dismiss();
-                handlePromoCodeSubmit();
-              }}
-              editable={!redeemingPromo}
-            />
-          </ScrollView>
-
-          <View style={styles.bottomSheetButtons}>
-            <TouchableOpacity
-              style={[styles.bottomSheetButton, styles.bottomSheetCancelButton]}
-              onPress={() => {
-                Keyboard.dismiss();
-                bottomSheetRef.current?.dismiss();
-                setPromoCode('');
-              }}
-              disabled={redeemingPromo}
-            >
-              <Text style={styles.bottomSheetCancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.bottomSheetButton, styles.redeemSubmitButton]}
-              onPress={handlePromoCodeSubmit}
-              disabled={redeemingPromo || !promoCode.trim()}
-            >
-              {redeemingPromo ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.redeemSubmitButtonText}>Redeem</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </BottomSheetView>
-      </BottomSheetModal>
+      {/* Promo Code Modal */}
+      <PromoCodeModal
+        ref={promoModalRef}
+        isVisible={showPromoModal}
+        onClose={() => setShowPromoModal(false)}
+        onRedeem={handlePromoCodeSubmit}
+        redeemingPromo={redeemingPromo}
+      />
     </ScreenWithHeader>
   );
 };
@@ -917,89 +800,5 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     textAlign: 'center',
   },
-  bottomSheetBackground: {
-    backgroundColor: 'rgba(30, 30, 30, 0.95)',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  bottomSheetIndicator: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  bottomSheetContent: {
-    flex: 1,
-    justifyContent: 'space-between',
-    minHeight: 300,
-  },
-  bottomSheetInnerContent: {
-    flex: 1,
-  },
-  bottomSheetScrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 20,
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-  },
-  bottomSheetTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  bottomSheetDescription: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 20,
-  },
-  promoInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginBottom: 24,
-    textAlign: 'center',
-    letterSpacing: 1,
-  },
-  bottomSheetButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    paddingTop: 16,
-    backgroundColor: 'transparent',
-    borderTopWidth: 0,
-  },
-  bottomSheetButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-  },
-  bottomSheetCancelButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-  },
-  bottomSheetCancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#EF4444',
-  },
-  redeemSubmitButton: {
-    backgroundColor: '#6366F1',
-  },
-  redeemSubmitButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
+
 });

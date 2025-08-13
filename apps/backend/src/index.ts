@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import subscriptionRoutes from './routes/subscription';
 import checklistRoutes from './routes/checklist';
+import projectRoutes from './routes/project';
+import aiRoutes from './routes/ai';
 import { StripeService } from './services/stripe';
 
 dotenv.config();
@@ -50,6 +52,8 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/subscriptions', subscriptionRoutes);
 app.use('/api', checklistRoutes);
+app.use('/api', projectRoutes);
+app.use('/api', aiRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

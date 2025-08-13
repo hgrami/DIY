@@ -14,8 +14,7 @@ import Animated, {
   ZoomIn,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import { NativeModal } from '../NativeModal';
 import { ChecklistItem } from '../../@types';
 
 interface Props {
@@ -44,39 +43,7 @@ export const ChecklistContextMenu: React.FC<Props> = ({
   onDelete,
   onDuplicate,
 }) => {
-  const bottomSheetRef = useRef<BottomSheetModal>(null);
 
-  // Keyboard listeners to properly manage keyboard and bottom sheet interaction
-  useEffect(() => {
-    const keyboardWillShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => {
-        // With single snap point at 40%, ensure bottom sheet stays in position
-        bottomSheetRef.current?.snapToIndex(0);
-      }
-    );
-    const keyboardWillHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        // Keep the same position with single snap point
-        bottomSheetRef.current?.snapToIndex(0);
-      }
-    );
-
-    return () => {
-      keyboardWillShowListener.remove();
-      keyboardWillHideListener.remove();
-    };
-  }, []);
-
-  // Handle visibility changes
-  useEffect(() => {
-    if (visible) {
-      bottomSheetRef.current?.present();
-    } else {
-      bottomSheetRef.current?.dismiss();
-    }
-  }, [visible]);
 
   const handleDelete = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -94,7 +61,7 @@ export const ChecklistContextMenu: React.FC<Props> = ({
           style: 'destructive',
           onPress: () => {
             onDelete();
-            bottomSheetRef.current?.dismiss();
+            handleDismiss();
           },
         },
       ]
@@ -104,14 +71,14 @@ export const ChecklistContextMenu: React.FC<Props> = ({
   const handleEdit = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    bottomSheetRef.current?.dismiss();
+    handleDismiss();
     onEdit();
   };
 
   const handleDuplicate = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    bottomSheetRef.current?.dismiss();
+    handleDismiss();
     onDuplicate();
   };
 
@@ -145,51 +112,26 @@ export const ChecklistContextMenu: React.FC<Props> = ({
     },
   ];
 
-  const renderBackdrop = React.useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        onPress={() => {
-          Keyboard.dismiss();
-          bottomSheetRef.current?.dismiss();
-        }}
-      />
-    ),
-    []
-  );
 
   return (
-    <BottomSheetModal
-      ref={bottomSheetRef}
-      snapPoints={['60%']}
-      enableDynamicSizing={false}
-      backgroundStyle={styles.bottomSheetBackground}
-      handleIndicatorStyle={styles.bottomSheetIndicator}
-      keyboardBehavior="extend"
-      keyboardBlurBehavior="restore"
-      android_keyboardInputMode="adjustResize"
-      enablePanDownToClose={true}
-      enableDismissOnClose={true}
-      backdropComponent={renderBackdrop}
-      onDismiss={handleDismiss}
+    <NativeModal
+      isVisible={visible}
+      onClose={handleDismiss}
+      title={item.title}
+      size="medium"
+      allowSwipeToClose={true}
+      headerComponent={
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalHeaderTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={styles.modalHeaderSubtitle}>
+            {item.completed ? 'Completed' : 'Pending'}
+          </Text>
+        </View>
+      }
     >
-      <BottomSheetView style={styles.bottomSheetContent}>
-        <ScrollView
-          style={styles.bottomSheetInnerContent}
-          contentContainerStyle={styles.bottomSheetScrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {item.title}
-            </Text>
-            <Text style={styles.headerSubtitle}>
-              {item.completed ? 'Completed' : 'Pending'}
-            </Text>
-          </View>
+      <View style={styles.container}>
 
           <View style={styles.actionsContainer}>
             {actions.map((action, index) => (
@@ -222,65 +164,30 @@ export const ChecklistContextMenu: React.FC<Props> = ({
               </Animated.View>
             ))}
           </View>
-        </ScrollView>
-
-        <View style={styles.bottomSheetButtons}>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => {
-              Keyboard.dismiss();
-              bottomSheetRef.current?.dismiss();
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </BottomSheetView>
-    </BottomSheetModal>
+      </View>
+    </NativeModal>
   );
 };
 
 const styles = StyleSheet.create({
-  bottomSheetBackground: {
-    backgroundColor: 'rgba(30, 30, 30, 0.95)',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  container: {
+    paddingTop: 8,
   },
-  bottomSheetIndicator: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  modalHeader: {
+    alignItems: 'center',
+    paddingBottom: 4,
   },
-  bottomSheetContent: {
-    flex: 1,
-    justifyContent: 'space-between',
-    minHeight: 200,
-  },
-  bottomSheetInnerContent: {
-    flex: 1,
-  },
-  bottomSheetScrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 20,
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-  },
-  header: {
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 16,
-  },
-  headerTitle: {
+  modalHeaderTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: 4,
+    textAlign: 'center',
   },
-  headerSubtitle: {
+  modalHeaderSubtitle: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
-    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: 2,
   },
   actionsContainer: {
     paddingBottom: 16,

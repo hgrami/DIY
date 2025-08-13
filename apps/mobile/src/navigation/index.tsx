@@ -4,10 +4,12 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useAuthContext } from '../context/AuthContext';
 import { RootStackParamList, AuthenticatedStackParamList, UnauthenticatedStackParamList } from '../@types';
-import { CustomDrawerContent } from '../components/CustomDrawerContent';
+import { DrawerContent } from './DrawerContent';
 
 // Screens
 import { HomeScreen } from '../screens/HomeScreen';
+import { ProjectsScreen } from '../screens/ProjectsScreen';
+import { ProjectScreen } from '../screens/ProjectScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { SubscriptionScreen } from '../screens/SubscriptionScreen';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -21,7 +23,7 @@ const UnauthenticatedStack = createStackNavigator<UnauthenticatedStackParamList>
 const AuthenticatedNavigator = () => {
     return (
         <AuthenticatedDrawer.Navigator
-            drawerContent={(props) => <CustomDrawerContent {...props} />}
+            drawerContent={(props) => <DrawerContent {...props} />}
             screenOptions={{
                 headerShown: false,
                 drawerType: 'slide',
@@ -35,6 +37,14 @@ const AuthenticatedNavigator = () => {
             <AuthenticatedDrawer.Screen
                 name="Home"
                 component={HomeScreen}
+            />
+            <AuthenticatedDrawer.Screen
+                name="Projects"
+                component={ProjectsScreen}
+            />
+            <AuthenticatedDrawer.Screen
+                name="Project"
+                component={ProjectScreen}
             />
             <AuthenticatedDrawer.Screen
                 name="Settings"

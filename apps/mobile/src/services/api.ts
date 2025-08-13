@@ -124,11 +124,14 @@ class ApiService {
       // Try to parse response data
       let data: any;
       const responseText = await response.text();
-      
+
       try {
         data = responseText ? JSON.parse(responseText) : { success: true, data: null };
       } catch (parseError) {
         console.error(`[ApiService] JSON parse error for ${endpoint}:`, parseError);
+        console.error(`[ApiService] Response text (first 500 chars):`, responseText.substring(0, 500));
+        console.error(`[ApiService] Response status:`, response.status);
+        console.error(`[ApiService] Response headers:`, response.headers);
         data = { success: false, error: 'Invalid response format' };
       }
 
@@ -143,8 +146,6 @@ class ApiService {
 
         // Check if we should retry
         if (await this.shouldRetryRequest(apiError, attempt)) {
-          console.log(`API auth error, retrying request (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}):`, data);
-
           // Wait before retrying with exponential backoff
           const delay = this.retryConfig.baseDelay * Math.pow(this.retryConfig.backoffMultiplier, attempt - 1);
           await this.sleep(delay);
@@ -165,8 +166,6 @@ class ApiService {
 
       // Check if we should retry for server errors
       if (await this.shouldRetryRequest(apiError, attempt)) {
-        console.log(`API error ${response.status}, retrying request (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}):`, data);
-
         const delay = this.retryConfig.baseDelay * Math.pow(this.retryConfig.backoffMultiplier, attempt - 1);
         await this.sleep(delay);
 
@@ -183,8 +182,6 @@ class ApiService {
 
       // For network errors, try to retry
       if (!error.status && await this.shouldRetryRequest(error, attempt)) {
-        console.log(`Network error, retrying request (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}):`, error.message);
-
         const delay = this.retryConfig.baseDelay * Math.pow(this.retryConfig.backoffMultiplier, attempt - 1);
         await this.sleep(delay);
 
@@ -213,6 +210,14 @@ class ApiService {
   async put<T>(endpoint: string, data: any, options: RequestInit = {}): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: 'PUT',
+      body: JSON.stringify(data),
+      ...options,
+    });
+  }
+
+  async patch<T>(endpoint: string, data: any, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    return this.makeRequest<T>(endpoint, {
+      method: 'PATCH',
       body: JSON.stringify(data),
       ...options,
     });
