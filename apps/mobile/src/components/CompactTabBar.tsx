@@ -18,6 +18,12 @@ import Animated, {
   FadeOut,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { 
+  StableGlassMaterial as EnhancedGlassMaterial
+} from './GlassUI';
+import { 
+  EnhancedGlassMaterial as EnhancedGlassMaterialType 
+} from './GlassUI/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -42,6 +48,51 @@ export const CompactTabBar: React.FC<CompactTabBarProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);
   const activeIndex = tabs.findIndex(tab => tab.id === activeTab);
   const indicatorPosition = useSharedValue(0);
+
+  // Enhanced glass material configuration for the tab bar
+  const tabBarGlassMaterial: EnhancedGlassMaterialType = {
+    blurIntensity: 15,
+    tint: 'systemUltraThinMaterial' as const,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowOpacity: 0.1,
+    
+    dynamicContrast: {
+      enabled: true,
+      sensitivity: 0.5,
+      minContrast: 3.0,
+      adaptSpeed: 300,
+    },
+    
+    refraction: {
+      enabled: true,
+      intensity: 0.1,
+      layers: 1,
+      motionSensitivity: 0.3,
+    },
+    
+    specularHighlights: {
+      enabled: false, // Disabled for subtle tab bar
+      intensity: 0,
+      size: 0,
+      motionResponse: false,
+      interactionResponse: false,
+      animationDuration: 0,
+    },
+    
+    performanceMode: 'balanced',
+    enableMotionEffects: true,
+    
+    iosOptimizations: {
+      useSystemMaterials: true,
+      metalPerformanceShaders: false,
+    },
+    
+    androidOptimizations: {
+      useRenderScript: false,
+      fallbackBlur: true,
+    },
+  };
 
   // Filter visible tabs
   const visibleTabs = tabs.filter(tab => tab.visible !== false);
@@ -116,6 +167,13 @@ export const CompactTabBar: React.FC<CompactTabBarProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* iOS 26 Liquid Glass Background for Tab Bar */}
+      <EnhancedGlassMaterial
+        material={tabBarGlassMaterial}
+        borderRadius={0}
+        style={StyleSheet.absoluteFill}
+      />
+      
       <ScrollView
         ref={scrollViewRef}
         horizontal

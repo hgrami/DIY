@@ -46,10 +46,10 @@ const MenuItem: React.FC<MenuItemProps> = ({
       activeOpacity={0.7}
     >
       <View style={[styles.iconContainer, isDestructive && styles.destructiveIconContainer]}>
-        <Feather 
-          name={icon} 
-          size={18} 
-          color={isDestructive ? '#FF453A' : color} 
+        <Feather
+          name={icon}
+          size={18}
+          color={isDestructive ? '#FF453A' : color}
         />
       </View>
       <View style={styles.itemContent}>
@@ -62,10 +62,10 @@ const MenuItem: React.FC<MenuItemProps> = ({
           </Text>
         )}
       </View>
-      <Feather 
-        name="chevron-right" 
-        size={16} 
-        color="rgba(255, 255, 255, 0.4)" 
+      <Feather
+        name="chevron-right"
+        size={16}
+        color="rgba(255, 255, 255, 0.4)"
       />
     </TouchableOpacity>
   );
@@ -80,7 +80,8 @@ export const UserMenuContent: React.FC<UserMenuContentProps> = ({
 }) => {
   const handleAction = (action: () => void) => {
     onClose();
-    action();
+    // Small delay to ensure menu closes before navigation
+    setTimeout(action, 150);
   };
 
   const getSubscriptionDisplayName = (status?: string) => {
@@ -127,11 +128,11 @@ export const UserMenuContent: React.FC<UserMenuContentProps> = ({
             {user?.email || 'User'}
           </Text>
           <View style={styles.subscriptionBadge}>
-            <View 
+            <View
               style={[
-                styles.subscriptionDot, 
+                styles.subscriptionDot,
                 { backgroundColor: getSubscriptionColor(user?.subscriptionStatus) }
-              ]} 
+              ]}
             />
             <Text style={styles.subscriptionText}>
               {getSubscriptionDisplayName(user?.subscriptionStatus)}
@@ -152,7 +153,7 @@ export const UserMenuContent: React.FC<UserMenuContentProps> = ({
           onPress={() => handleAction(onSettingsPress)}
           color="#64748B"
         />
-        
+
         <MenuItem
           icon="credit-card"
           title="Subscription"
@@ -160,7 +161,7 @@ export const UserMenuContent: React.FC<UserMenuContentProps> = ({
           onPress={() => handleAction(onSubscriptionPress)}
           color="#667eea"
         />
-        
+
         <MenuItem
           icon="log-out"
           title="Sign Out"

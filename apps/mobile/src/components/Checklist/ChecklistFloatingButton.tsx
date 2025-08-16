@@ -22,6 +22,14 @@ import Animated, {
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { 
+  EnhancedGlassMaterial, 
+  SpecularHighlight
+} from '../GlassUI';
+import { 
+  EnhancedGlassMaterial as EnhancedGlassMaterialType,
+  InteractionState 
+} from '../GlassUI/types';
 
 interface Props {
   onAddItem: (title: string) => Promise<{ success: boolean }> | { success: boolean } | void;
@@ -34,8 +42,56 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export const ChecklistFloatingButton: React.FC<Props> = ({ onAddItem, disabled = false }) => {
   const [showInput, setShowInput] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [interactionState, setInteractionState] = useState<InteractionState>({
+    isPressed: false,
+  });
   const scale = useSharedValue(1);
   const rotation = useSharedValue(0);
+
+  // Enhanced glass material configuration for the floating button
+  const fabGlassMaterial: EnhancedGlassMaterialType = {
+    blurIntensity: 25,
+    tint: 'systemUltraThinMaterial' as const,
+    backgroundColor: 'rgba(102, 126, 234, 0.2)',
+    borderColor: 'rgba(102, 126, 234, 0.4)',
+    shadowOpacity: 0.3,
+    
+    dynamicContrast: {
+      enabled: true,
+      sensitivity: 0.8,
+      minContrast: 4.5,
+      adaptSpeed: 200,
+    },
+    
+    refraction: {
+      enabled: true,
+      intensity: 0.4,
+      layers: 2,
+      motionSensitivity: 0.7,
+    },
+    
+    specularHighlights: {
+      enabled: true,
+      intensity: 0.5,
+      size: 1.0,
+      motionResponse: true,
+      interactionResponse: true,
+      animationDuration: 150,
+    },
+    
+    performanceMode: 'balanced',
+    enableMotionEffects: true,
+    
+    iosOptimizations: {
+      useSystemMaterials: true,
+      metalPerformanceShaders: false,
+    },
+    
+    androidOptimizations: {
+      useRenderScript: false,
+      fallbackBlur: false,
+    },
+  };
 
   const handlePress = async () => {
     if (disabled) return;

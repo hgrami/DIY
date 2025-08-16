@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { Card } from '../Card';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -158,8 +159,13 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.08)']}
+      <Card
+        variant="elevated"
+        noPadding
+        enableDynamicContrast={true}
+        enableMotionEffects={true}
+        enableSpecularHighlights={true}
+        performanceMode="balanced"
         style={styles.card}
       >
         {/* Header */}
@@ -259,7 +265,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
             </LinearGradient>
           </AnimatedTouchableOpacity>
         </View>
-      </LinearGradient>
+      </Card>
     </Animated.View>
   );
 };

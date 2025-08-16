@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { Card } from '../Card';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -145,8 +146,13 @@ export const SearchResultCard: React.FC<SearchResultCardProps> = ({
       onLongPress={handleLongPress}
       activeOpacity={0.7}
     >
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.12)', 'rgba(255, 255, 255, 0.06)']}
+      <Card
+        variant="default"
+        noPadding
+        enableDynamicContrast={true}
+        enableMotionEffects={true}
+        enableSpecularHighlights={true}
+        performanceMode="balanced"
         style={styles.card}
       >
         {/* Header */}
@@ -300,7 +306,7 @@ export const SearchResultCard: React.FC<SearchResultCardProps> = ({
             )}
           </View>
         )}
-      </LinearGradient>
+      </Card>
     </AnimatedTouchableOpacity>
   );
 };

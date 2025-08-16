@@ -19,20 +19,23 @@ import Animated, {
   withSpring,
   withTiming,
   runOnJS,
+  interpolate,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { GlassButton } from './GlassButton';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useBackgroundAnalysis } from '../hooks/useBackgroundAnalysis';
+import { useDeviceMotion } from '../hooks/useDeviceMotion';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HANDLE_HEIGHT = 48; // Enlarged for easier grabbing
 
 type ModalSize = 'small' | 'medium' | 'full';
 
-interface NativeModalProps {
+export interface NativeModalProps {
   isVisible: boolean;
   onClose: () => void;
   title?: string;
@@ -44,6 +47,12 @@ interface NativeModalProps {
   allowSwipeToClose?: boolean;
   disableScrollView?: boolean;
   size?: ModalSize;
+  
+  // iOS 26 Liquid Glass features
+  enableDynamicContrast?: boolean;
+  enableMotionEffects?: boolean;
+  enableSpecularHighlights?: boolean;
+  performanceMode?: 'high' | 'balanced' | 'low';
 }
 
 export const NativeModal: React.FC<NativeModalProps> = ({
@@ -58,11 +67,26 @@ export const NativeModal: React.FC<NativeModalProps> = ({
   allowSwipeToClose = true,
   disableScrollView = false,
   size = 'full',
+  enableDynamicContrast = true,
+  enableMotionEffects = true,
+  enableSpecularHighlights = true,
+  performanceMode = 'balanced',
 }) => {
   const sheetY = useSharedValue(SCREEN_HEIGHT);
   const dragStartY = useSharedValue(0);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const insets = useSafeAreaInsets();
+
+  // Use static values to prevent crashes
+  const backgroundAnalysis = {
+    getAdaptiveTint: () => 'light' as const,
+    getAdaptiveBlurIntensity: () => 30,
+  };
+  
+  const deviceMotion = {
+    getParallaxOffset: () => ({ x: 0, y: 0 }),
+    getSpecularPosition: () => ({ x: 0.5, y: 0.5 }),
+  };
 
   // Base and target heights: prefer stable height, shrink only as needed for keyboard
   const statusBarHeight = insets.top || 0;
@@ -90,65 +114,109 @@ export const NativeModal: React.FC<NativeModalProps> = ({
   const animatedHeight = useSharedValue(targetHeight);
   const bottomOffset = useSharedValue(0);
 
-  // Spring animation helper
+  // Get adaptive properties from background analysis
+  const adaptiveTint = backgroundAnalysis.getAdaptiveTint();
+  const adaptiveBlurIntensity = backgroundAnalysis.getAdaptiveBlurIntensity();
+  const parallaxOffset = deviceMotion.getParallaxOffset(0.15); // Very subtle for large surfaces
+  const specularPosition = deviceMotion.getSpecularPosition(0.2);
+
+  // Dynamic modal configuration based on size and analysis
+  const getModalConfig = () => {
+    const baseIntensity = Platform.OS === 'ios' ? adaptiveBlurIntensity : 20;
+    const sizeFactors = {
+      small: 0.8,
+      medium: 0.9,
+      full: 1.0,
+    };
+    
+    return {
+      blurIntensity: baseIntensity * sizeFactors[size],
+      tint: adaptiveTint,
+      backgroundOpacity: size === 'full' ? 0.9 : 0.85,
+    };
+  };
+
+  const modalConfig = getModalConfig();
+
+  // Improved spring animation with less bounce
   const springTo = useCallback((to: number) => {
     sheetY.value = withSpring(to, {
-      damping: 20,
-      stiffness: 200,
-      mass: 0.8
+      damping: 30,      // Increased damping to reduce bounce
+      stiffness: 150,   // Reduced stiffness for smoother animation
+      mass: 1.0         // Increased mass for more stability
     });
   }, [sheetY]);
 
-  // Handle modal dismiss
+  // Simple and reliable modal dismiss
   const handleDismiss = useCallback(() => {
     Keyboard.dismiss();
-    sheetY.value = withTiming(targetHeight, { duration: 300 });
-    setTimeout(onClose, 300);
+    
+    // Animate out and call onClose immediately
+    sheetY.value = withTiming(targetHeight, { 
+      duration: 250,
+    });
+    
+    // Call onClose with a small delay to let animation start
+    setTimeout(onClose, 100);
   }, [onClose, sheetY, targetHeight]);
 
-  // Keyboard event listeners
+  // Keyboard event listeners with debouncing
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
+    let keyboardTimeout: NodeJS.Timeout;
+
     const showSubscription = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
+      clearTimeout(keyboardTimeout);
+      keyboardTimeout = setTimeout(() => {
+        setKeyboardHeight(e.endCoordinates.height);
+      }, 50); // Small delay to debounce rapid changes
     });
 
     const hideSubscription = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
+      clearTimeout(keyboardTimeout);
+      keyboardTimeout = setTimeout(() => {
+        setKeyboardHeight(0);
+      }, 50); // Small delay to debounce rapid changes
     });
 
     return () => {
+      clearTimeout(keyboardTimeout);
       showSubscription.remove();
       hideSubscription.remove();
     };
   }, []);
 
-  // Handle modal visibility changes
+  // Handle modal visibility changes - simple approach
   useEffect(() => {
     if (isVisible) {
-      // Initialize to off-screen (by its own height), then spring into place
+      // Initialize to off-screen position
       sheetY.value = targetHeight;
-      animatedHeight.value = withSpring(targetHeight);
-      bottomOffset.value = withTiming(keyboardHeight, { duration: 250 });
-      springTo(0);
-    } else {
-      springTo(targetHeight);
+      animatedHeight.value = targetHeight;
+      bottomOffset.value = keyboardHeight;
+      
+      // Smooth entrance animation
+      setTimeout(() => {
+        springTo(0);
+      }, 50);
     }
   }, [isVisible, targetHeight, springTo, animatedHeight, bottomOffset, keyboardHeight, sheetY]);
 
-  // Adjust position when keyboard changes
+  // Handle keyboard changes ONLY when modal is visible and settled
   useEffect(() => {
     if (isVisible) {
-      // Smoothly adjust both height and bottom offset when keyboard changes
-      animatedHeight.value = withSpring(targetHeight);
-      bottomOffset.value = withTiming(keyboardHeight, { duration: 250 });
-      springTo(0);
+      // Only update height, don't move the modal position
+      animatedHeight.value = withTiming(targetHeight, { 
+        duration: 250,
+      });
+      bottomOffset.value = withTiming(keyboardHeight, { 
+        duration: 250,
+      });
     }
-  }, [keyboardHeight, isVisible, springTo, targetHeight, animatedHeight, bottomOffset]);
+  }, [keyboardHeight, targetHeight, animatedHeight, bottomOffset, isVisible]);
 
-  // Pan gesture for swipe to dismiss
+  // More sensitive pan gesture for swipe to dismiss
   const panGesture = Gesture.Pan()
     .onBegin(() => {
       dragStartY.value = sheetY.value;
@@ -156,27 +224,32 @@ export const NativeModal: React.FC<NativeModalProps> = ({
     .onUpdate((event) => {
       // Only allow downward movement (positive translationY)
       if (event.translationY >= 0) {
-        const nextY = Math.max(0, dragStartY.value + event.translationY);
-        sheetY.value = nextY;
+        sheetY.value = event.translationY;
       }
     })
     .onEnd((event) => {
       const translationY = event.translationY;
       const velocityY = event.velocityY;
 
-      // Adjust dismiss threshold based on modal size
-      const dismissThreshold = size === 'small' ? 0.4 : size === 'medium' ? 0.35 : 0.3;
+      // Much more sensitive thresholds
+      const distanceThreshold = targetHeight * 0.15; // Only 15% of modal height
+      const velocityThreshold = 500; // Even lower velocity threshold
 
       // Determine if should dismiss or snap back
-      if (translationY > targetHeight * dismissThreshold || velocityY > 1000) {
+      if (translationY > distanceThreshold || velocityY > velocityThreshold) {
+        // Dismiss modal immediately
         runOnJS(handleDismiss)();
       } else {
-        // Snap back to original position
-        springTo(0);
+        // Snap back to original position smoothly
+        sheetY.value = withSpring(0, {
+          damping: 30,
+          stiffness: 180,
+          mass: 0.9
+        });
       }
     });
 
-  // Animated styles
+  // Simplified animated styles without parallax
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ translateY: sheetY.value }],
@@ -226,29 +299,27 @@ export const NativeModal: React.FC<NativeModalProps> = ({
           borderBottomRightRadius: 0,
         }
       ]}>
-        {/* Primary Glass Background Blur */}
+        {/* Primary Glass Background Layer */}
         <BlurView
-          intensity={Platform.OS === 'ios' ? 35 : 25}
-          tint={Platform.OS === 'ios' ? 'systemUltraThinMaterial' : 'dark'}
-          style={StyleSheet.absoluteFill}
-        />
-
-        {/* Secondary Blur Layer for Depth */}
-        <BlurView
-          intensity={Platform.OS === 'ios' ? 20 : 15}
-          tint="dark"
+          intensity={modalConfig.blurIntensity}
+          tint={modalConfig.tint as any}
           style={[
             StyleSheet.absoluteFill,
-            { opacity: 0.6 }
+            {
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              borderBottomLeftRadius: bottomRadius,
+              borderBottomRightRadius: bottomRadius,
+            }
           ]}
         />
 
-        {/* Base Glass Layer */}
+        {/* Base Background Color Layer */}
         <View
           style={[
             StyleSheet.absoluteFill,
             {
-              backgroundColor: 'rgba(28, 28, 30, 0.95)', // Darker, more solid background like Apple
+              backgroundColor: `rgba(28, 28, 30, ${modalConfig.backgroundOpacity})`,
               borderTopLeftRadius: 28,
               borderTopRightRadius: 28,
               borderBottomLeftRadius: bottomRadius,
@@ -257,8 +328,13 @@ export const NativeModal: React.FC<NativeModalProps> = ({
           ]}
         />
 
-        {/* Inner Highlight */}
-        <View
+        {/* Simple Glass Gradient Overlay */}
+        <LinearGradient
+          colors={[
+            'rgba(255, 255, 255, 0.1)',
+            'rgba(255, 255, 255, 0.03)',
+            'rgba(0, 0, 0, 0.02)',
+          ]}
           style={[
             StyleSheet.absoluteFill,
             {
@@ -266,16 +342,13 @@ export const NativeModal: React.FC<NativeModalProps> = ({
               borderTopRightRadius: 28,
               borderBottomLeftRadius: bottomRadius,
               borderBottomRightRadius: bottomRadius,
-              borderWidth: 1.5,
-              borderTopColor: 'rgba(255, 255, 255, 0.3)',
-              borderLeftColor: 'rgba(255, 255, 255, 0.2)',
-              borderRightColor: 'rgba(255, 255, 255, 0.2)',
-              borderBottomColor: size !== 'full' && !isKeyboardVisible ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-            },
+            }
           ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
         />
 
-        {/* Outer Border */}
+        {/* Simple Border */}
         <View
           style={[
             StyleSheet.absoluteFill,
@@ -285,10 +358,7 @@ export const NativeModal: React.FC<NativeModalProps> = ({
               borderBottomLeftRadius: bottomRadius,
               borderBottomRightRadius: bottomRadius,
               borderWidth: StyleSheet.hairlineWidth,
-              borderTopColor: 'rgba(255, 255, 255, 0.4)',
-              borderLeftColor: 'rgba(255, 255, 255, 0.4)',
-              borderRightColor: 'rgba(255, 255, 255, 0.4)',
-              borderBottomColor: size !== 'full' && !isKeyboardVisible ? 'rgba(255, 255, 255, 0.4)' : 'transparent',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
             },
           ]}
         />

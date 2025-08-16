@@ -18,6 +18,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Card } from '../Card';
+import { 
+  EnhancedGlassMaterial, 
+  SpecularHighlight
+} from '../GlassUI';
+import { 
+  EnhancedGlassMaterial as EnhancedGlassMaterialType,
+  InteractionState 
+} from '../GlassUI/types';
 import * as Haptics from 'expo-haptics';
 import { ChecklistItem } from '../../@types';
 import { ChecklistDensity, DENSITY_CONFIGS } from '../../types/checklist';
@@ -327,6 +335,11 @@ export const ChecklistItemCard: React.FC<Props> = ({
                             noPadding 
                             disableTextSelection 
                             style={cardStyle ? StyleSheet.flatten([getCardStyle(densityConfig), cardStyle]) : getCardStyle(densityConfig)}
+                            variant={item.completed ? "glass" : "default"}
+                            enableDynamicContrast={true}
+                            enableMotionEffects={true}
+                            enableSpecularHighlights={true}
+                            performanceMode="balanced"
                         >
                             {/* Selection indicator */}
                             {isSelected && (

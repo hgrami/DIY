@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -112,36 +112,19 @@ export const HomeScreen: React.FC = () => {
       >
         <StatusBar barStyle="light-content" />
 
-        {/* Top Bar */}
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.hamburgerButton}
-            onPress={handleDrawerToggle}
-          >
-            <Feather name="menu" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <GlassMenuButton
-            text={user?.email?.charAt(0).toUpperCase() || 'U'}
-            popoverPosition="bottom-left"
-            popoverWidth={320}
-            popoverHeight={240}
-            onOpenChange={setGlassMenuOpen}
-            renderPopover={() => (
-              <UserMenuContent
-                user={user}
-                onSettingsPress={() => navigation.navigate('Settings')}
-                onSubscriptionPress={() => navigation.navigate('Subscription')}
-                onLogout={handleLogout}
-                onClose={() => setGlassMenuOpen(false)}
-              />
-            )}
-          />
-        </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.scrollContainer} 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Welcome Card */}
-          <Card variant="elevated">
+          <Card 
+            variant="elevated"
+            enableDynamicContrast={true}
+            enableMotionEffects={true}
+            enableSpecularHighlights={true}
+            performanceMode="balanced"
+          >
             <Text style={styles.welcomeTitle}>Welcome back!</Text>
             <Text style={styles.welcomeSubtitle}>
               {user?.email || 'User'}
@@ -152,13 +135,23 @@ export const HomeScreen: React.FC = () => {
           </Card>
 
           {/* Quick Actions */}
-          <Card>
+          <Card
+            variant="default"
+            enableDynamicContrast={true}
+            enableMotionEffects={true}
+            enableSpecularHighlights={true}
+            performanceMode="balanced"
+          >
             <Text style={styles.sectionTitle}>Quick Actions</Text>
             <View style={styles.actionButtons}>
               <Button
                 title="Search DIY Resources"
                 onPress={handleSearchPress}
                 variant="primary"
+                enableDynamicContrast={true}
+                enableMotionEffects={true}
+                enableSpecularHighlights={true}
+                performanceMode="balanced"
               />
               <Button
                 title="My Projects"
@@ -282,6 +275,40 @@ export const HomeScreen: React.FC = () => {
           </Card>
         </ScrollView>
 
+        {/* Floating Top Buttons */}
+        <TouchableOpacity
+          style={styles.floatingHamburgerButton}
+          onPress={handleDrawerToggle}
+        >
+          <Feather name="menu" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <View style={styles.floatingUserButton}>
+          <GlassMenuButton
+            text={user?.email?.charAt(0).toUpperCase() || 'U'}
+            popoverPosition="bottom-left"
+            popoverWidth={320}
+            popoverHeight={320}
+            isOpen={glassMenuOpen}
+            onOpenChange={(open) => {
+              console.log('GlassMenuButton onOpenChange:', open);
+              setGlassMenuOpen(open);
+            }}
+            renderPopover={() => (
+              <UserMenuContent
+                user={user}
+                onSettingsPress={() => navigation.navigate('Settings')}
+                onSubscriptionPress={() => navigation.navigate('Subscription')}
+                onLogout={handleLogout}
+                onClose={() => {
+                  console.log('UserMenuContent onClose called');
+                  setGlassMenuOpen(false);
+                }}
+              />
+            )}
+          />
+        </View>
+
         {/* Legacy User Dropdown - Keep for backward compatibility but hidden when glass menu is active */}
         {!glassMenuOpen && (
           <UserDropdown
@@ -314,20 +341,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 10,
-  },
-  hamburgerButton: {
-    padding: 8,
-  },
-  content: {
+  scrollContainer: {
     flex: 1,
-    paddingTop: 20,
+  },
+  scrollContent: {
+    paddingTop: 80, // Add space for floating buttons
+    paddingBottom: 20,
+  },
+  floatingHamburgerButton: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    shadowColor: 'rgba(0, 0, 0, 0.2)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  floatingUserButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 1000,
   },
   welcomeTitle: {
     fontSize: 24,

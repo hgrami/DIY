@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -8,12 +8,22 @@ import {
   ActivityIndicator,
   View,
   Platform,
+  Pressable,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { useBackgroundAnalysis } from '../hooks/useBackgroundAnalysis';
+import { useDeviceMotion } from '../hooks/useDeviceMotion';
 
-interface ButtonProps {
+export interface ButtonProps {
   title: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'outline';
@@ -22,6 +32,12 @@ interface ButtonProps {
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  
+  // iOS 26 Liquid Glass features
+  enableDynamicContrast?: boolean;
+  enableMotionEffects?: boolean;
+  enableSpecularHighlights?: boolean;
+  performanceMode?: 'high' | 'balanced' | 'low';
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -33,248 +49,185 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   style,
   textStyle,
+  enableDynamicContrast = true,
+  enableMotionEffects = true,
+  enableSpecularHighlights = true,
+  performanceMode = 'balanced',
 }) => {
-  const handlePress = () => {
+  // Animation values
+  const pressedScale = useSharedValue(1);
+  const highlightOpacity = useSharedValue(0);
+  const [pressLocation, setPressLocation] = useState({ x: 0.5, y: 0.5 });
+  
+  // Disable dynamic features temporarily to fix crashes - use static values
+  const backgroundAnalysis = {
+    getAdaptiveTint: () => 'light' as const,
+    getAdaptiveBlurIntensity: () => 20,
+  };
+  
+  const deviceMotion = {
+    getParallaxOffset: () => ({ x: 0, y: 0 }),
+    getSpecularPosition: () => ({ x: 0.5, y: 0.5 }),
+  };
+
+  const handlePress = useCallback(() => {
     if (!disabled && !loading) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onPress();
     }
+  }, [disabled, loading, onPress]);
+
+  // Simplified press handling to prevent crashes
+  const handlePressIn = useCallback(() => {
+    if (disabled || loading) return;
+    pressedScale.value = withSpring(0.95, { damping: 15, stiffness: 300 });
+  }, [disabled, loading, pressedScale]);
+
+  const handlePressOut = useCallback(() => {
+    pressedScale.value = withSpring(1, { damping: 15, stiffness: 300 });
+  }, [pressedScale]);
+
+  // Get adaptive properties from background analysis
+  const adaptiveTint = backgroundAnalysis.getAdaptiveTint();
+  const adaptiveBlurIntensity = backgroundAnalysis.getAdaptiveBlurIntensity();
+  const parallaxOffset = deviceMotion.getParallaxOffset(0.3); // Subtle parallax
+  const specularPosition = deviceMotion.getSpecularPosition(0.4);
+
+  // Dynamic styles based on variant and analysis
+  const getVariantConfig = () => {
+    const configs = {
+      primary: {
+        baseColor: 'rgba(102, 126, 234, 0.9)',
+        borderColor: 'rgba(102, 126, 234, 0.4)',
+        tint: adaptiveTint,
+        intensity: adaptiveBlurIntensity * 0.8,
+      },
+      secondary: {
+        baseColor: 'rgba(255, 255, 255, 0.15)',
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        tint: adaptiveTint,
+        intensity: adaptiveBlurIntensity,
+      },
+      outline: {
+        baseColor: 'transparent',
+        borderColor: 'rgba(255, 255, 255, 0.4)',
+        tint: 'light',
+        intensity: 0, // No blur for outline
+      },
+    };
+    return configs[variant];
   };
 
-  const getGlassColors = () => {
-    switch (variant) {
-      case 'primary':
-        return {
-          baseColor: 'rgba(102, 126, 234, 0.15)', // Blue tint
-          gradientColors: [
-            'rgba(102, 126, 234, 0.3)',
-            'rgba(102, 126, 234, 0.15)', 
-            'rgba(102, 126, 234, 0.08)',
-            'rgba(0, 0, 0, 0.08)'
-          ],
-          borderHighlight: 'rgba(102, 126, 234, 0.6)',
-          borderColor: 'rgba(102, 126, 234, 0.4)',
-        };
-      case 'secondary':
-        return {
-          baseColor: 'rgba(255, 255, 255, 0.08)', // Neutral white
-          gradientColors: [
-            'rgba(255, 255, 255, 0.2)',
-            'rgba(255, 255, 255, 0.08)', 
-            'rgba(255, 255, 255, 0.02)',
-            'rgba(0, 0, 0, 0.08)'
-          ],
-          borderHighlight: 'rgba(255, 255, 255, 0.4)',
-          borderColor: 'rgba(255, 255, 255, 0.3)',
-        };
-      case 'outline':
-        return {
-          baseColor: 'rgba(255, 255, 255, 0.05)', // Very transparent
-          gradientColors: [
-            'rgba(255, 255, 255, 0.15)',
-            'rgba(255, 255, 255, 0.05)', 
-            'rgba(255, 255, 255, 0.02)',
-            'rgba(0, 0, 0, 0.05)'
-          ],
-          borderHighlight: 'rgba(255, 255, 255, 0.3)',
-          borderColor: 'rgba(255, 255, 255, 0.25)',
-        };
-      default:
-        return {
-          baseColor: 'rgba(102, 126, 234, 0.15)',
-          gradientColors: [
-            'rgba(102, 126, 234, 0.3)',
-            'rgba(102, 126, 234, 0.15)', 
-            'rgba(102, 126, 234, 0.08)',
-            'rgba(0, 0, 0, 0.08)'
-          ],
-          borderHighlight: 'rgba(102, 126, 234, 0.6)',
-          borderColor: 'rgba(102, 126, 234, 0.4)',
-        };
-    }
+  const config = getVariantConfig();
+
+  // Size-based dimensions
+  const sizeConfig = {
+    small: { height: 40, paddingH: 16, fontSize: 14, borderRadius: 10 },
+    medium: { height: 48, paddingH: 24, fontSize: 16, borderRadius: 12 },
+    large: { height: 56, paddingH: 32, fontSize: 18, borderRadius: 14 },
   };
+  const dimensions = sizeConfig[size];
 
-  const getTextStyle = (): TextStyle => {
-    const baseStyle: TextStyle = {
-      fontWeight: '600',
-      textAlign: 'center',
-    };
-
-    const sizeStyles: Record<string, TextStyle> = {
-      small: { fontSize: 14 },
-      medium: { fontSize: 16 },
-      large: { fontSize: 18 },
-    };
-
-    const variantStyles: Record<string, TextStyle> = {
-      primary: { color: '#FFFFFF' },
-      secondary: { color: '#FFFFFF' },
-      outline: { color: '#FFFFFF' },
-    };
-
-    return {
-      ...baseStyle,
-      ...sizeStyles[size],
-      ...variantStyles[variant],
-      ...textStyle,
-    };
-  };
-
-  const glassColors = getGlassColors();
+  // Simplified animation - only scale for press
+  const animatedButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressedScale.value }],
+  }));
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.button,
-        size === 'small' && styles.buttonSmall,
-        size === 'medium' && styles.buttonMedium,
-        size === 'large' && styles.buttonLarge,
-        disabled && styles.buttonDisabled,
-        style,
-      ]}
-      onPress={handlePress}
-      disabled={disabled || loading}
-      activeOpacity={0.8}
-    >
-      {/* Primary Glass Background Blur */}
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 20 : 15}
-        tint={Platform.OS === 'ios' ? 'systemUltraThinMaterial' : 'light'}
-        style={StyleSheet.absoluteFill}
-      />
-      
-      {/* Secondary Blur Layer for Depth */}
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 10 : 8}
-        tint="light"
+    <Animated.View style={[animatedButtonStyle, style]}>
+      <Pressable
         style={[
-          StyleSheet.absoluteFill,
-          { opacity: 0.4 }
-        ]}
-      />
-      
-      {/* Base Glass Layer */}
-      <View
-        style={[
-          StyleSheet.absoluteFill,
+          styles.container,
           {
-            backgroundColor: disabled 
-              ? 'rgba(255, 255, 255, 0.05)' 
-              : glassColors.baseColor,
-            borderRadius: 12,
+            height: dimensions.height,
+            borderRadius: dimensions.borderRadius,
+            borderWidth: variant === 'outline' ? 1 : StyleSheet.hairlineWidth,
+            borderColor: disabled ? 'rgba(255, 255, 255, 0.2)' : config.borderColor,
           },
         ]}
-      />
-      
-      {/* Glass Gradient Layer - Top to Bottom */}
-      <LinearGradient
-        colors={disabled ? [
-          'rgba(255, 255, 255, 0.1)',
-          'rgba(255, 255, 255, 0.05)', 
-          'rgba(255, 255, 255, 0.02)',
-          'rgba(0, 0, 0, 0.05)'
-        ] as const : glassColors.gradientColors}
-        style={[
-          StyleSheet.absoluteFill,
-          { borderRadius: 12 }
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      />
-      
-      {/* Inner Highlight */}
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            borderRadius: 12,
-            borderWidth: 1,
-            borderTopColor: disabled 
-              ? 'rgba(255, 255, 255, 0.2)'
-              : glassColors.borderHighlight,
-            borderLeftColor: disabled 
-              ? 'rgba(255, 255, 255, 0.1)'
-              : `${glassColors.borderHighlight}80`, // 50% opacity
-            borderRightColor: disabled 
-              ? 'rgba(255, 255, 255, 0.05)'
-              : `${glassColors.borderHighlight}40`, // 25% opacity
-            borderBottomColor: 'rgba(0, 0, 0, 0.1)',
-          },
-        ]}
-      />
-      
-      {/* Outer Border */}
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            borderRadius: 12,
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: disabled 
-              ? 'rgba(255, 255, 255, 0.2)'
-              : glassColors.borderColor,
-          },
-        ]}
-      />
-
-      {/* Content */}
-      <View
-        style={[
-          styles.content,
-          size === 'small' && styles.contentSmall,
-          size === 'medium' && styles.contentMedium,
-          size === 'large' && styles.contentLarge,
-        ]}
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={disabled || loading}
       >
-        {loading ? (
-          <ActivityIndicator color="#FFFFFF" size="small" />
-        ) : (
-          <Text style={getTextStyle()}>{title}</Text>
+        {/* Primary Blur Layer */}
+        {config.intensity > 0 && Platform.OS === 'ios' && (
+          <BlurView
+            intensity={config.intensity}
+            tint={config.tint as any}
+            style={[StyleSheet.absoluteFill, { borderRadius: dimensions.borderRadius }]}
+          />
         )}
-      </View>
-    </TouchableOpacity>
+
+        {/* Base Background Layer */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: disabled 
+                ? 'rgba(255, 255, 255, 0.05)' 
+                : config.baseColor,
+              borderRadius: dimensions.borderRadius,
+            },
+          ]}
+        />
+
+        {/* Simple Glass Gradient Overlay */}
+        <LinearGradient
+          colors={[
+            'rgba(255, 255, 255, 0.2)',
+            'rgba(255, 255, 255, 0.05)',
+            'rgba(0, 0, 0, 0.03)',
+          ]}
+          style={[StyleSheet.absoluteFill, { borderRadius: dimensions.borderRadius }]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+
+        {/* Content */}
+        <View style={[styles.content, { paddingHorizontal: dimensions.paddingH }]}>
+          {loading ? (
+            <ActivityIndicator 
+              color={disabled ? "rgba(255,255,255,0.6)" : "#FFFFFF"} 
+              size="small" 
+            />
+          ) : (
+            <Text style={[
+              styles.text,
+              {
+                fontSize: dimensions.fontSize,
+                color: disabled ? 'rgba(255, 255, 255, 0.6)' : '#FFFFFF',
+              },
+              textStyle,
+            ]}>
+              {title}
+            </Text>
+          )}
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  button: {
-    borderRadius: 12,
+  container: {
     overflow: 'hidden',
-    shadowColor: Platform.OS === 'ios' ? 'rgba(0, 0, 0, 0.3)' : '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  buttonSmall: {
-    minHeight: 40,
-  },
-  buttonMedium: {
-    minHeight: 48,
-  },
-  buttonLarge: {
-    minHeight: 56,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  content: {
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: Platform.OS === 'ios' ? 'rgba(0, 0, 0, 0.3)' : '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  contentSmall: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
-  contentMedium: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  contentLarge: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+  text: {
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

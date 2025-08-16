@@ -30,6 +30,7 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
   popoverPosition = 'auto',
   popoverWidth = 280,
   popoverHeight = 200,
+  isOpen: externalIsOpen,
   renderPopover,
   onOpenChange,
   size = 40,
@@ -48,7 +49,10 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
   },
 }) => {
   const buttonRef = useRef<View>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  
+  // Use external state if provided, otherwise use internal state
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
   const [buttonDimensions, setButtonDimensions] = useState<ButtonDimensions>({
     width: size,
     height: size,
@@ -133,17 +137,24 @@ export const GlassMenuButton: React.FC<GlassMenuButtonProps> = ({
       
       const dimensions = await measureButton();
       setButtonDimensions(dimensions);
-      setIsOpen(true);
+      
+      // Update internal state only if not externally controlled
+      if (externalIsOpen === undefined) {
+        setInternalIsOpen(true);
+      }
       onOpenChange?.(true);
     } catch (error) {
       console.error('Error opening glass menu:', error);
     }
-  }, [measureButton, onOpenChange]);
+  }, [measureButton, onOpenChange, externalIsOpen]);
 
   const handleClose = useCallback(() => {
-    setIsOpen(false);
+    // Update internal state only if not externally controlled
+    if (externalIsOpen === undefined) {
+      setInternalIsOpen(false);
+    }
     onOpenChange?.(false);
-  }, [onOpenChange]);
+  }, [onOpenChange, externalIsOpen]);
 
   // Animated styles
   const buttonAnimatedStyle = useAnimatedStyle(() => ({
